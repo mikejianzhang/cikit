@@ -1,9 +1,9 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='packit',
+    name='cikit',
     version='1.0',
-    description='Download artifacts from artifactory and generate product package.',
+    description='CI Tools',
     author='Mike Zhang',
     packages=find_packages(),
 )
