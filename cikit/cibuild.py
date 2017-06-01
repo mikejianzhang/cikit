@@ -1,16 +1,14 @@
 #!/usr/bin/env python
-import os
-import sys
 import subprocess
-from ciutil.ciutil import PathStackMgr
+from ciutils.pathmanager import PathStackMgr
 
 class CIBuild:
     def __init__(self, workDir, prodVersion):
-        self._workDir = wordDir
+        self._workDir = workDir
         self._prodVersion = prodVersion
         self._buildInfo = {}
         self._pathStack = PathStackMgr()
-        self.generateBuildInfo()
+        self.generateBuildInfo() # Can support to load build info properties instead of created dynamiclly.
 
     def prebuild(self):
         self.createLabel()
@@ -32,7 +30,8 @@ class CIBuild:
     
     def getNextBuildNumber(self):
         iNextBN = 1
-        output1 = subprocess.check_output(['git','tag','-l', tagPrefix_s1 + '_rc_' + '*','--sort=-version:refname'], shell=True)
+        output1 = subprocess.check_output('git tag -l 1.3.1* --sort=-version:refname', shell=True)
+        print output1
         return iNextBN
 
     def getCurrentCommit(self):

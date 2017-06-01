@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import os
-import sys
 
 class PathStackMgr:
     def __init__(self):
@@ -11,5 +10,5 @@ class PathStackMgr:
         os.chdir(path)
         
     def popd(self):
-        if(len(pathStack) > 0):
+        if(len(self.pathStack) > 0):
             os.chdir(self.pathStack.pop())
