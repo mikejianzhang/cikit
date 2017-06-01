@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import subprocess
 from ciutils.pathmanager import PathStackMgr
+from ciutils.cmdutils import CMDExecutor, CMDExecutorError
 
 class CIBuild:
     def __init__(self, workDir, prodVersion):
@@ -30,9 +31,17 @@ class CIBuild:
     
     def getNextBuildNumber(self):
         iNextBN = 1
-        output1 = subprocess.check_output('git tag -l 1.3.1* --sort=-version:refname', shell=True)
-        print output1
+        cmdline = "git tag -l " + self._prodVersion + "* --sort=-version:refname"
+        self._pathStack.pushd(self._workDir)
+        cmd = CMDExecutor(cmdline)
+        output = cmd.execute()
+        self._pathStack.popd()
+        print output
         return iNextBN
 
     def getCurrentCommit(self):
         return
+    
+if __name__ == "__main__":
+    build = CIBuild("/Users/mike/Documents/MikeWorkspace/FreessureCoffee/service", "1.3.1")
+    build.getNextBuildNumber()
