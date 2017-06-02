@@ -1,6 +1,5 @@
 #!/usr/bin/env python
-import subprocess
-from ciutils.pathmanager import PathStackMgr
+
 from ciutils.cmdutils import CMDExecutor, CMDExecutorError
 
 class CIBuild:
@@ -8,8 +7,6 @@ class CIBuild:
         self._workDir = workDir
         self._prodVersion = prodVersion
         self._buildInfo = {}
-        self._pathStack = PathStackMgr()
-        self.generateBuildInfo() # Can support to load build info properties instead of created dynamiclly.
 
     def prebuild(self):
         self.createLabel()
@@ -32,11 +29,12 @@ class CIBuild:
     def getNextBuildNumber(self):
         iNextBN = 1
         cmdline = "git tag -l " + self._prodVersion + "* --sort=-version:refname"
-        self._pathStack.pushd(self._workDir)
-        cmd = CMDExecutor(cmdline)
-        output = cmd.execute()
-        self._pathStack.popd()
-        print output
+        cmd = CMDExecutor(cmdline, self._workDir)
+        try:
+            output = cmd.execute()
+        except CMDExecutorError as cmderr:
+            print cmderr
+
         return iNextBN
 
     def getCurrentCommit(self):

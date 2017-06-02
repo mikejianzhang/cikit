@@ -1,14 +1,19 @@
 #!/usr/bin/env python
 import subprocess
+from pathmanager import PathStackMgr
 
 class CMDExecutor:
-    def __init__(self, cmdline):
+    def __init__(self, cmdline, workDir):
         self._cmdline = cmdline
+        self._workDir = workDir
+        self._pathStack = PathStackMgr()
         
     def execute(self):
         output=''
         try:
+            self._pathStack.pushd(self._workDir)
             output=subprocess.check_output(self._cmdline, stderr=subprocess.STDOUT, shell=True)
+            self._pathStack.popd()
         except subprocess.CalledProcessError as err:
             raise CMDExecutorError(self._cmdline, err.returncode, err.output)
         else:
@@ -20,7 +25,7 @@ class CMDExecutorError(Exception):
         self._errorcode = errorcode
         self._errormsg = errormsg
         
-    def __str__(self):
+    def __repr__(self):
         strValue = "[Error class]: CMDExecutorError" + "\n[Command]: " + self._cmdline + "\n[Error Message]:\n" + self._errormsg
         return strValue
     
