@@ -1,10 +1,10 @@
-from cikit.ciutils.cmdutils import CMDExecutor
+from cikit.cibuild import CIBuild
 
 if __name__ == "__main__":
     try:
-        cmd = CMDExecutor("","/Users/mike/Documents/MikeWorkspace/FreessureCoffee/service")
-        output = cmd.execute()
+
+        build = CIBuild("/Users/mike/Documents/MikeWorkspace/FreessureCoffee/service", "1.3.1", "service")
+        output = build.getCurrentCommit()
+        print output
     except Exception as err:
         print err
-    else:
-        print output
