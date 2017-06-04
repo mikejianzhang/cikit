@@ -8,6 +8,9 @@ class CIBasicError(Exception):
         self._errormsg = errormsg
         self._cause = cause
     
+    def __str__(self):
+        return self.stackError
+ 
     def __repr__(self):
         return self.stackError
     

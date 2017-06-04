@@ -1,37 +1,59 @@
 #!/usr/bin/env python
-
+import os
+import re
 from ciutils.cmdutils import CMDExecutor, CMDExecutorError
 from cierrors import CIBasicError
+from ciutils.fileutils import FileManager
 
 class CIBuild:
+    BUIDINFO_FILENAME = "build-info.properties"
+
     def __init__(self, workDir, prodVersion, buildName):
         self._workDir = workDir
         self._prodVersion = prodVersion
         self._buildName = buildName
         
     def _saveBuildInfo(self, buildInfo):
-        pass
+        content = ""
+        filepath = self._workDir + os.sep + self.BUIDINFO_FILENAME
+        try:
+            for key in buildInfo.keys():
+                content = content + key + "=" + buildInfo[key] + "\n"
+
+            content.rstrip("\n")
+            FileManager.saveTextFile(filepath, content)
+        except Exception as err:
+            raise CIBuildError("Failed on method _saveBuildInfo!", err)
 
     def prebuild(self, saveBuildInfo=False):
         try:
             nextBN = self.getNextBuildNumber()
+            currentCommit = self.getCurrentCommit()
             buildVersion = self._prodVersion + "_b" + str(nextBN)
             buildLabel = buildVersion
-            self.createLabel(buildLabel)
+            self.createLabel(buildLabel, currentCommit)
             if(saveBuildInfo):
                 buildInfo = {}
                 buildInfo['build.name'] = self._buildName
                 buildInfo['build.number'] = str(nextBN);
                 buildInfo['build.version'] = buildVersion
                 buildInfo['build.label'] = buildLabel
-                buildInfo['build.commit'] = self.getCurrentCommit()
+                buildInfo['build.commit'] = currentCommit
                 self._saveBuildInfo(buildInfo)
             
         except Exception as err:
             raise CIBuildError("Failed on method prebuild!", err)
 
-    def createLabel(self, label):
-        return
+    def createLabel(self, label, commit):
+        try:
+            cmdline = "git tag " + label + " " + commit
+            cmd = CMDExecutor(cmdline, self._workDir)
+            cmd.execute()
+            cmdline = "git push --tags"
+            cmd = CMDExecutor(cmdline, self._workDir)
+            cmd.execute()
+        except Exception as err:
+            raise CIBuildError("Failed on method createLabel", err)
     
     def getNextBuildNumber(self):
         iNextBN = 1
@@ -41,7 +63,8 @@ class CIBuild:
             output = cmd.execute()
             if(output):
                 listOutput = output.split("\n")
-                latestBN = int(output[0])
+                sLatestBN =  re.sub(self._prodVersion+'_b', '', listOutput[0], flags=re.IGNORECASE)
+                latestBN = int(sLatestBN)
                 iNextBN = latestBN + 1
         except Exception as err:
             raise CIBuildError("Failed on method getNextBuildNumber!", err)
@@ -53,7 +76,7 @@ class CIBuild:
         cmd = CMDExecutor(cmdline, self._workDir)
         try:
             output = cmd.execute()
-            return output
+            return output.lstrip('\n\s').rstrip('\n\s')
         except Exception as err:
             raise CIBuildError("Failed on method getCurrentCommit!", err)
     
