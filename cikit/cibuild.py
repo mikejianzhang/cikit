@@ -8,10 +8,11 @@ from ciutils.fileutils import FileManager
 class CIBuild:
     BUIDINFO_FILENAME = "build-info.properties"
 
-    def __init__(self, workDir, prodVersion, buildName):
+    def __init__(self, workDir, prodVersion, buildName, gitRemote="origin"):
         self._workDir = workDir
         self._prodVersion = prodVersion
         self._buildName = buildName
+        self._gitRemote = gitRemote
         
     def _saveBuildInfo(self, buildInfo):
         content = ""
@@ -49,7 +50,7 @@ class CIBuild:
             cmdline = "git tag " + label + " " + commit
             cmd = CMDExecutor(cmdline, self._workDir)
             cmd.execute()
-            cmdline = "git push --tags"
+            cmdline = "git push " + self._gitRemote + " " + label
             cmd = CMDExecutor(cmdline, self._workDir)
             cmd.execute()
         except Exception as err:
