@@ -1,11 +1,20 @@
+import sys
+import argparse
 from cikit.cibuild import CIBuild
 
+def _main(argv):
+    parser = argparse.ArgumentParser(prog='cikit', usage="cikit command")
+    subparsers = parser.add_subparsers(help='sub-command help')
+    parser_build = subparsers.add_parser('build')
+    parser_build.add_argument('--workdir', action='store', dest='workdir')
+    parser_build.add_argument('--buildname', action='store', dest='buildname')
+    parser_build.add_argument('--prodversion', action='store', dest='prodversion')
+    parser_build.add_argument('--gitremote', action='store', dest='gitremote')
+    subparsers_build = parser_build.add_subparsers(help='sub-command help')
+    parser_prebuild = subparsers_build.add_parser('prebuild')
+    
+    print parser.parse_args(["build", "--workdir='???'", "--buildname='???'", "--prodversion='???'", "--gitremote='???'", "prebuild"])
+    
+    
 if __name__ == "__main__":
-    try:
-
-        build = CIBuild("/Users/mike/Documents/MikeWorkspace/FreessureCoffee/service", "1.3.1", "service")
-        #build.createLabel("1.3.1_b3", "aee8946052d540b4db278acc9295b40c3538cd41")
-        #print build.getNextBuildNumber()
-        build.prebuild(True)
-    except Exception as err:
-        print err
+    _main(sys.argv[1:])
