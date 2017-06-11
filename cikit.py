@@ -1,20 +1,64 @@
 import sys
 import argparse
-from cikit.cibuild import CIBuild
+from cikit.cmds import all_commands
+
+def _commander(cmdName):
+    def runCMD(args):
+        cmd = all_commands[cmdName]
+        cmd.execute(args)
+    
+    return runCMD
 
 def _main(argv):
-    parser = argparse.ArgumentParser(prog='cikit', usage="cikit command")
-    subparsers = parser.add_subparsers(help='sub-command help')
-    parser_build = subparsers.add_parser('build')
-    parser_build.add_argument('--workdir', action='store', dest='workdir')
-    parser_build.add_argument('--buildname', action='store', dest='buildname')
-    parser_build.add_argument('--prodversion', action='store', dest='prodversion')
-    parser_build.add_argument('--gitremote', action='store', dest='gitremote')
-    subparsers_build = parser_build.add_subparsers(help='sub-command help')
-    parser_prebuild = subparsers_build.add_parser('prebuild')
+    # python cikit.py
+    #
+    parser = argparse.ArgumentParser(prog='cikit', 
+                                     description="cikit to assist CI/CD construction")
+
+    subparsers = parser.add_subparsers(help='commands')
     
-    print parser.parse_args(["build", "--workdir='???'", "--buildname='???'", "--prodversion='???'", "--gitremote='???'", "prebuild"])
+    # python cikit.py <prebuild|postbuild>
+    #
+    parent_parser = argparse.ArgumentParser(add_help=False)
+    parent_parser.add_argument('--workdir', action='store', 
+                              dest='workdir',
+                              required=True, 
+                              help='Store the local work directory of current build')
+
+    parent_parser.add_argument('--buildname', action='store', 
+                              dest='buildname',
+                              required=True,
+                              help='Store current build name')
+
+    parent_parser.add_argument('--prodversion', action='store', 
+                              dest='prodversion',
+                              required=True,
+                              help='Store the version of current building product or component')
+
+    parent_parser.add_argument('--gitremote', action='store', 
+                              dest='gitremote',
+                              default='origin',
+                              required=True,
+                              help='Store git remote name of current building work directory')
+
+    parser_prebuild = subparsers.add_parser('prebuild', 
+                                            help='Build supported toolkits for pre-build stage', 
+                                            parents=[parent_parser])
+    parser_prebuild.add_argument('--savebuildinfo', action='store_true',
+                                 dest='savebuildinfo',
+                                 default=False,
+                                 help='Set savebuildinfo to true to save build info into file')
+    parser_prebuild.set_defaults(func=_commander('prebuild'))
+
+    parser_postbuild = subparsers.add_parser('postbuild',
+                                            help='Build supported toolkits for post-build stage',
+                                            parents=[parent_parser])
+    parser_postbuild.set_defaults(func=_commander('postbuild'))
+    
+    args = parser.parse_args(argv[1:])
+    dictargs = vars(args)
+    args.func(dictargs)
     
     
 if __name__ == "__main__":
-    _main(sys.argv[1:])
+    _main(sys.argv)
