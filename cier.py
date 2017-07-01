@@ -150,7 +150,7 @@ def _get_next_buildnumber(productversion, builddir):
     output = ""
     try:
         cmd = "git tag -l copd-%s-* --sort=-version:refname" % productversion 
-        ps.pushd(builddir + os.sep + ".repo\manifests")
+        ps.pushd(builddir + os.sep + ".repo" + os.sep + "manifests")
         output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
     except Exception as err:
         print err
