@@ -171,15 +171,15 @@ def get_buildinfo(productversion, builddir, buildurl, forcebuilds=None):
     buildtag = "copd-" + productversion + "-b" + str(buidnumber)
     buildversion = productversion + "-b" + str(buidnumber)
     props={}
-    props['build.number'] = str(buidnumber)
-    props['build.version'] = buildversion
-    props['build.tag'] = buildtag
+    props['build_number'] = str(buidnumber)
+    props['build_version'] = buildversion
+    props['build_tag'] = buildtag
     
     blist = _get_local_builddir_info(builddir, buildurl, forcebuilds)
     for b in blist:
-        props[b.name + '.build.needed'] = str(b.buildneeded)
-        props[b.name + '.build.commit'] = b.commit
-        props[b.name + '.build.branch'] = b.branch
+        props[b.name + '_build_needed'] = str(b.buildneeded)
+        props[b.name + '_build_commit'] = b.commit
+        props[b.name + '_build_branch'] = b.branch
         
     _gen_prop_file(props, builddir)
     
