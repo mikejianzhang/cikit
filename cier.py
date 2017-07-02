@@ -10,6 +10,9 @@ import sys
 
 ALL_REPOS = ['test-repo1', 'test-repo2', 'tests-repo3']
 
+def _dash_to_underscore(value):
+    return value.replace("-", "_")
+
 class PathStackMgr(object):
     def __init__(self):
         self.pathStack = list()
@@ -40,7 +43,7 @@ class Repo(object):
         self._buildneeded = False
     
     def __str__(self):
-        return "%s.commit=%s\n%s.branch=%s\n%s.buildneeded=%s" % (self._name, self._commit, self._name, self._branch, self._name, self._buildneeded)
+        return "%s_commit=%s\n%s_branch=%s\n%s_buildneeded=%s" % (_dash_to_underscore(self._name), self._commit, _dash_to_underscore(self._name), self._branch, _dash_to_underscore(self._name), self._buildneeded)
     
     @property
     def name(self):
@@ -83,7 +86,7 @@ def _get_repos_buildneeded(buildurl, forcebuilds=None):
         reposneedbuild = forcebuilds
     else:  
         changedRepos = _get_changed_repos(buildurl)
-        if('copd-repo1' in changedRepos):
+        if('test-repo1' in changedRepos):
             reposneedbuild = ALL_REPOS
         else:
             reposneedbuild = changedRepos
@@ -149,7 +152,7 @@ def _get_next_buildnumber(productversion, builddir):
     iBuildNumber = 1
     output = ""
     try:
-        cmd = "git tag -l copd-%s-* --sort=-version:refname" % productversion 
+        cmd = "git tag -l copd_%s_* --sort=-version:refname" % productversion 
         ps.pushd(builddir + os.sep + ".repo" + os.sep + "manifests")
         output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
     except Exception as err:
@@ -160,7 +163,7 @@ def _get_next_buildnumber(productversion, builddir):
     if(output):
         loutput = output.split('\n')
         pretag = loutput[0]
-        m = re.search("^copd-" + productversion + "-b(.*)$", pretag)
+        m = re.search("^copd_" + productversion + "_b(.*)$", pretag)
         sBuildNumber = m.group(1)
         iBuildNumber = int(sBuildNumber) + 1
 
@@ -168,8 +171,8 @@ def _get_next_buildnumber(productversion, builddir):
 
 def get_buildinfo(productversion, builddir, buildurl, forcebuilds=None):
     buidnumber = _get_next_buildnumber(productversion, builddir)
-    buildtag = "copd-" + productversion + "-b" + str(buidnumber)
-    buildversion = productversion + "-b" + str(buidnumber)
+    buildtag = "copd_" + productversion + "_b" + str(buidnumber)
+    buildversion = productversion + "_b" + str(buidnumber)
     props={}
     props['build_number'] = str(buidnumber)
     props['build_version'] = buildversion
@@ -177,9 +180,9 @@ def get_buildinfo(productversion, builddir, buildurl, forcebuilds=None):
     
     blist = _get_local_builddir_info(builddir, buildurl, forcebuilds)
     for b in blist:
-        props[b.name + '_build_needed'] = str(b.buildneeded)
-        props[b.name + '_build_commit'] = b.commit
-        props[b.name + '_build_branch'] = b.branch
+        props[_dash_to_underscore(b.name) + '_build_needed'] = str(b.buildneeded)
+        props[_dash_to_underscore(b.name) + '_build_commit'] = b.commit
+        props[_dash_to_underscore(b.name) + '_build_branch'] = b.branch
         
     _gen_prop_file(props, builddir)
     
@@ -249,6 +252,7 @@ def main(argv):
     
 if __name__ == "__main__":
     main(sys.argv)
+    #print _dash_to_underscore("test-repo1-yes")
     #build = _get_repos_buildneeded("http://localhost:8080/jenkins/job/copd-multi/11/changes", forcebuilds="all")
     #for x in build:
     #    print x
