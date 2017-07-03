@@ -8,7 +8,7 @@ import xml.etree.ElementTree as ET
 import argparse
 import sys
 
-ALL_REPOS = ['test-repo1', 'test-repo2', 'tests-repo3']
+ALL_REPOS = ['copd-repo1', 'copd-repo2', 'copd-repo3']
 
 def _dash_to_underscore(value):
     return value.replace("-", "_")
@@ -72,7 +72,8 @@ def _get_changed_repos(buildurl):
     buildurl - Jenkins build url (i.e. http://localhost:8080/jenkins/view/test/job/copd-multi/9/changes)
     return - list of string
     '''
-    data = urllib2.urlopen(buildurl).read()
+    buildchangeurl = "%s/changes" % buildurl
+    data = urllib2.urlopen(buildchangeurl).read()
     pattern=r"Project:\s((?!\.repo).*)<br.*>"
     changesre = re.compile(pattern)
     changes = [x.strip() for x in changesre.findall(data)]
@@ -86,7 +87,7 @@ def _get_repos_buildneeded(buildurl, forcebuilds=None):
         reposneedbuild = forcebuilds
     else:  
         changedRepos = _get_changed_repos(buildurl)
-        if('test-repo1' in changedRepos):
+        if('copd-repo1' in changedRepos):
             reposneedbuild = ALL_REPOS
         else:
             reposneedbuild = changedRepos
@@ -147,39 +148,76 @@ def _get_local_builddir_info(builddir, buildurl, forcebuilds=None):
     
     return repolist
 
-def _get_next_buildnumber(productversion, builddir):
+def _get_next_buildnumber(prodname, prodversion, builddir):
     ps = PathStackMgr()
     iBuildNumber = 1
     output = ""
     try:
-        cmd = "git tag -l copd_%s_* --sort=-version:refname" % productversion 
+        cmd = "git tag -l %s_%s_* --sort=-version:refname" % (prodname, prodversion)
         ps.pushd(builddir + os.sep + ".repo" + os.sep + "manifests")
         output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+        if(output):
+            loutput = output.split('\n')
+            pretag = loutput[0]
+            pattern = "^%s_%s_b(.*)$" % (prodname, prodversion)
+            m = re.search(pattern, pretag)
+            if(m):
+                sBuildNumber = m.group(1)
+                iBuildNumber = int(sBuildNumber) + 1
+        
     except Exception as err:
         print err
     finally:
         ps.popd()
     
-    if(output):
-        loutput = output.split('\n')
-        pretag = loutput[0]
-        m = re.search("^copd_" + productversion + "_b(.*)$", pretag)
-        sBuildNumber = m.group(1)
-        iBuildNumber = int(sBuildNumber) + 1
-
     return iBuildNumber
 
-def get_buildinfo(productversion, builddir, buildurl, forcebuilds=None):
-    buidnumber = _get_next_buildnumber(productversion, builddir)
-    buildtag = "copd_" + productversion + "_b" + str(buidnumber)
-    buildversion = productversion + "_b" + str(buidnumber)
-    props={}
-    props['build_number'] = str(buidnumber)
-    props['build_version'] = buildversion
-    props['build_tag'] = buildtag
+def _get_manifest_info(builddir):
+    ps = PathStackMgr()
+    manifestUrl = ""
+    manifestBranch = ""
+    try:
+        cmd = "git remote -vv"
+        ps.pushd(builddir + os.sep + ".repo" + os.sep + "manifests")
+        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+        if(output):
+            loutput = output.split('\n')
+            firstline = loutput[0]
+            pattern = ".*(ssh:\/\/.*).*\(fetch\)$"
+            m = re.search(pattern, firstline)
+            if(m):
+                manifestUrl = m.group(1)
+        
+        cmd = "git branch -vv"
+        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+        if(output):
+            pattern = ".*\[origin\/(.+)\].*"
+            m = re.search(pattern, output)
+            if(m):
+                manifestBranch = m.group(1)
+    except Exception as err:
+        print err
+    finally:
+        ps.popd()
     
+    return (manifestUrl, manifestBranch)
+
+def get_buildinfo(prodname, prodversion, builddir, buildurl, forcebuilds=None):
+    buidnumber = _get_next_buildnumber(prodname, prodversion, builddir)
+    buildversion = "%s_b%s" % (prodversion, str(buidnumber))
+    buildtag = "%s_%s_b%s" % (prodname, prodversion, str(buidnumber))
+    manifesturl, manifestBranch = _get_manifest_info(builddir)
+    props={}
+    props['product_name'] = prodname
+    props['product_version'] = prodversion
+    props['product_build_tag'] = buildtag
+    props['product_manifest_url'] = manifesturl
+    props['product_manifest_branch'] = manifestBranch
     blist = _get_local_builddir_info(builddir, buildurl, forcebuilds)
     for b in blist:
+        props[_dash_to_underscore(b.name) + '_build_number'] = str(buidnumber)
+        props[_dash_to_underscore(b.name) + '_build_version'] = buildversion
+        props[_dash_to_underscore(b.name) + '_build_tag'] = buildtag
         props[_dash_to_underscore(b.name) + '_build_needed'] = str(b.buildneeded)
         props[_dash_to_underscore(b.name) + '_build_commit'] = b.commit
         props[_dash_to_underscore(b.name) + '_build_branch'] = b.branch
@@ -188,7 +226,7 @@ def get_buildinfo(productversion, builddir, buildurl, forcebuilds=None):
     
 def prebuild(args):
     lforcebuilds = None
-    if(args["forcebuilds"]):
+    if(args["forcebuilds"] and args["forcebuilds"] != "none"):
         if(args["forcebuilds"] == "all"):
             lforcebuilds = "all"
         else:
@@ -196,7 +234,7 @@ def prebuild(args):
     
     print "lforcebuilds = %s" % lforcebuilds
     
-    get_buildinfo(args["prodversion"], args["builddir"], args["buildurl"], lforcebuilds)
+    get_buildinfo(args["prodname"], args["prodversion"], args["builddir"], args["buildurl"], lforcebuilds)
 
 def postbuild(args):
         pass
@@ -212,6 +250,16 @@ def main(argv):
     # python cier.py <prebuild|postbuild>
     #
     parent_parser = argparse.ArgumentParser(add_help=False)
+    parent_parser.add_argument('--prodname', action='store', 
+                              dest='prodname',
+                              required=True, 
+                              help='Store the product')
+
+    parent_parser.add_argument('--prodversion', action='store', 
+                              dest='prodversion',
+                              required=True,
+                              help='Store the version of current building product or component')
+
     parent_parser.add_argument('--builddir', action='store', 
                               dest='builddir',
                               required=True, 
@@ -226,10 +274,6 @@ def main(argv):
                               dest='buildname',
                               help='Store current build name')
 
-    parent_parser.add_argument('--prodversion', action='store', 
-                              dest='prodversion',
-                              required=True,
-                              help='Store the version of current building product or component')
     
     parent_parser.add_argument('--forcebuilds', action='store', 
                               dest='forcebuilds',
@@ -256,3 +300,5 @@ if __name__ == "__main__":
     #build = _get_repos_buildneeded("http://localhost:8080/jenkins/job/copd-multi/11/changes", forcebuilds="all")
     #for x in build:
     #    print x
+    #get_buildinfo("copd", "1.0.0", r"C:\Users\310276411\MyJenkins\local\workspace\copd-cibuild", "http://localhost:8080/jenkins/view/test/job/copd-cibuild/34/changes")
+    
