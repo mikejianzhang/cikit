@@ -229,6 +229,7 @@ def _get_manifest_info(builddir):
     ps = PathStackMgr()
     manifestUrl = ""
     manifestBranch = ""
+    manifestCommit = ""
     try:
         cmd = "git remote -vv"
         ps.pushd(builddir + os.sep + ".repo" + os.sep + "manifests")
@@ -248,24 +249,32 @@ def _get_manifest_info(builddir):
             m = re.search(pattern, output)
             if(m):
                 manifestBranch = m.group(1)
+                
+        cmd = "git rev-parse HEAD"
+        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+        if(output):
+            manifestCommit = output
+                
+        
     except Exception as err:
         print err
     finally:
         ps.popd()
     
-    return (manifestUrl, manifestBranch)
+    return (manifestUrl, manifestBranch, manifestCommit)
 
 def get_buildinfo(prodname, prodversion, builddir, buildurl, forcebuilds=None):
     buidnumber = _get_next_buildnumber(prodname, prodversion, builddir)
     buildversion = "%s_b%s" % (prodversion, str(buidnumber))
     buildtag = "%s_%s_b%s" % (prodname, prodversion, str(buidnumber))
-    manifesturl, manifestBranch = _get_manifest_info(builddir)
+    manifesturl, manifestBranch, manifestCommit = _get_manifest_info(builddir)
     props={}
     props['product_name'] = prodname
     props['product_version'] = prodversion
     props['product_build_tag'] = buildtag
     props['product_manifest_url'] = manifesturl
     props['product_manifest_branch'] = manifestBranch
+    props['product_manifest_commit'] = manifestCommit
     blist = _get_local_builddir_info(builddir, buildurl, forcebuilds)
     for b in blist:
         props[_dash_to_underscore(b.name) + '_build_number'] = str(buidnumber)
