@@ -7,6 +7,8 @@ import subprocess
 import xml.etree.ElementTree as ET
 import argparse
 import sys
+import requests
+import json
 
 ALL_REPOS = ['copd-repo1', 'copd-repo2', 'copd-repo3']
 
@@ -34,6 +36,27 @@ class PathStackMgr(object):
             print err
             raise
             
+
+class SimpleRestClient:
+    @staticmethod
+    def getJSONContent(url):
+        content = SimpleRestClient.getStringContent(url)
+        
+        # Loading the response data into a dict variable
+        # json.loads takes in only binary or string variables so using content to fetch binary content
+        # Loads (Load String) takes a Json file and converts into python data structure (dict or list, depending on JSON)
+        jData = json.loads(content)            
+        return jData
+    
+    @staticmethod
+    def getStringContent(url):
+        myResponse = requests.get(url, verify=False)
+        
+        if(not myResponse.ok):
+            # If response code is not ok (200), print the resulting http error code with description
+            myResponse.raise_for_status()
+
+        return myResponse.content
 
 class Repo(object):
     def __init__(self, name, commit, branch):
@@ -69,15 +92,45 @@ class Repo(object):
 
 def _get_changed_repos(buildurl):
     '''
-    buildurl - Jenkins build url (i.e. http://localhost:8080/jenkins/view/test/job/copd-multi/9/changes)
+    Get all changed repos since last successful builds which deal with multi builds in parallel.
+    buildurl - Jenkins build url (i.e. http://localhost:8080/jenkins/view/test/job/copd-multi/9/)
     return - list of string
     '''
-    buildchangeurl = "%s/changes" % buildurl
+    changedRepos = []
+    pattern = "(^http:\/\/.*\/)[1-9][0-9]*\/$"
+    joburl = ""
+    m = re.search(pattern, buildurl)
+    if(m):
+        joburl = m.group(1)
+        
+    jdata = SimpleRestClient.getJSONContent("%sapi/json?pretty=true" % joburl)
+    lastSuccessfulBuildNumber = jdata["lastSuccessfulBuild"]["number"]
+    for build in jdata["builds"]:
+        if(build["number"] > lastSuccessfulBuildNumber):
+            crepos = _get_changed_repos_of_build(build["url"])
+            for repo in crepos:
+                if(repo not in changedRepos):
+                    changedRepos.append(repo)
+        else:
+            break
+
+    return changedRepos
+
+def _get_changed_repos_of_build(buildurl):
+    '''
+    Get changed repos since last build.
+    buildurl - Jenkins build url (i.e. http://localhost:8080/jenkins/view/test/job/copd-multi/9)
+    return - list of string
+    '''
+    changedRepos = []
+    buildchangeurl = "%schanges" % buildurl
     data = urllib2.urlopen(buildchangeurl).read()
     pattern=r"Project:\s((?!\.repo).*)<br.*>"
     changesre = re.compile(pattern)
-    changes = [x.strip() for x in changesre.findall(data)]
-    return changes
+    if(changesre):
+        changedRepos = [x.strip() for x in changesre.findall(data)]
+
+    return changedRepos
 
 def _get_repos_buildneeded(buildurl, forcebuilds=None):
     reposneedbuild = [] 
@@ -301,4 +354,5 @@ if __name__ == "__main__":
     #for x in build:
     #    print x
     #get_buildinfo("copd", "1.0.0", r"C:\Users\310276411\MyJenkins\local\workspace\copd-cibuild", "http://localhost:8080/jenkins/view/test/job/copd-cibuild/34/changes")
-    
+    #changedRepos = _get_changed_repos("http://localhost:8080/jenkins/view/test/job/copd-test-parallel-cibuild/11/")
+    #print changedRepos
