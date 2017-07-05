@@ -197,11 +197,11 @@ def _get_local_builddir_info(builddir, buildurl, forcebuilds=None):
             raise("Can't find the default node from manifest")
     
         for project in root.iter('project'):
-            cmd = "git -C %s show -s --pretty=format:%h_%ae %s" % (project.attrib['name'], project.attrib['revision'])
+            cmd = "git -C %s show -s --pretty=format:%h#%ae %s" % (project.attrib['name'], project.attrib['revision'])
             output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
             if(output):
                 output = output.strip()
-                loutput = output.split('_')
+                loutput = output.split('#')
                 repolist.append(Repo(project.attrib['name'], project.attrib['revision'], loutput[0], project.attrib['upstream'], loutput[1]))
         
     except Exception as err:
