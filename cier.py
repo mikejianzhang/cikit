@@ -281,7 +281,7 @@ def _get_manifest_info(builddir):
 
 def get_buildinfo(prodname, prodversion, builddir, buildurl, forcebuilds=None):
     buildnumber = _get_next_buildnumber(prodname, prodversion, builddir)
-    buildversion = "%s_b%s" % (prodversion, str(buidnumber))
+    buildversion = "%s_b%s" % (prodversion, str(buildnumber))
     buildtag = "%s_%s_b%s" % (prodname, prodversion, str(buidnumber))
     manifesturl, manifestBranch, manifestCommit = _get_manifest_info(builddir)
     props={}
