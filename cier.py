@@ -280,7 +280,7 @@ def _get_manifest_info(builddir):
     return (manifestUrl, manifestBranch, manifestCommit)
 
 def get_buildinfo(prodname, prodversion, builddir, buildurl, forcebuilds=None):
-    buidnumber = _get_next_buildnumber(prodname, prodversion, builddir)
+    buildnumber = _get_next_buildnumber(prodname, prodversion, builddir)
     buildversion = "%s_b%s" % (prodversion, str(buidnumber))
     buildtag = "%s_%s_b%s" % (prodname, prodversion, str(buidnumber))
     manifesturl, manifestBranch, manifestCommit = _get_manifest_info(builddir)
@@ -295,7 +295,7 @@ def get_buildinfo(prodname, prodversion, builddir, buildurl, forcebuilds=None):
     props['product_manifest_commit'] = manifestCommit
     blist = _get_local_builddir_info(builddir, buildurl, forcebuilds)
     for b in blist:
-        props[_dash_to_underscore(b.name) + '_build_number'] = str(buidnumber)
+        props[_dash_to_underscore(b.name) + '_build_number'] = str(buildnumber)
         props[_dash_to_underscore(b.name) + '_build_version'] = buildversion
         props[_dash_to_underscore(b.name) + '_build_tag'] = buildtag
         props[_dash_to_underscore(b.name) + '_build_needed'] = str(b.buildneeded)
