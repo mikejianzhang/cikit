@@ -10,7 +10,7 @@ import sys
 import requests
 import json
 
-ALL_REPOS = ['copd-repo1', 'copd-repo2', 'copd-repo3']
+ALL_REPOS = ['test-repo1', 'test-repo2', 'test-repo3']
 
 def _dash_to_underscore(value):
     return value.replace("-", "_")
@@ -59,9 +59,10 @@ class SimpleRestClient:
         return myResponse.content
 
 class Repo(object):
-    def __init__(self, name, commit, branch):
+    def __init__(self, name, commit, abbrev_commit, branch, author):
         self._name = name
         self._commit = commit
+        self._author = author
         self._branch = branch
         self._buildneeded = False
     
@@ -75,6 +76,14 @@ class Repo(object):
     @property
     def commit(self):
         return self._commit
+    
+    @property
+    def abbrevcommit(self):
+        return self._abbrevcommit
+    
+    @property
+    def author(self):
+        return self._author
     
     @property    
     def branch(self):
@@ -140,7 +149,7 @@ def _get_repos_buildneeded(buildurl, forcebuilds=None):
         reposneedbuild = forcebuilds
     else:  
         changedRepos = _get_changed_repos(buildurl)
-        if('copd-repo1' in changedRepos):
+        if('test-repo1' in changedRepos):
             reposneedbuild = ALL_REPOS
         else:
             reposneedbuild = changedRepos
@@ -181,19 +190,26 @@ def _get_local_builddir_info(builddir, buildurl, forcebuilds=None):
         cmd = "repo manifest -r"
         ps.pushd(builddir)
         output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+        
+        root = ET.fromstring(output)
+        defaultNode = root.find('default')
+        if(defaultNode is None):
+            raise("Can't find the default node from manifest")
+    
+        for project in root.iter('project'):
+            cmd = "git -C %s show -s --pretty=format:%h_%ae %s" % (project.attrib['name'], project.attrib['revision'])
+            output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+            if(output):
+                output = output.strip()
+                loutput = output.split('_')
+                repolist.append(Repo(project.attrib['name'], project.attrib['revision'], loutput[0], project.attrib['upstream'], loutput[1]))
+        
     except Exception as err:
         print err
+        raise err
     finally:
         ps.popd()
         
-    root = ET.fromstring(output)
-    defaultNode = root.find('default')
-    if(defaultNode is None):
-        raise("Can't find the default node from manifest")
-
-    for project in root.iter('project'):
-        repolist.append(Repo(project.attrib['name'], project.attrib['revision'], project.attrib['upstream']))
-    
     buildNeeded = _get_repos_buildneeded(buildurl, forcebuilds)
     for repo in repolist:
         if(repo.name in buildNeeded):
@@ -253,7 +269,7 @@ def _get_manifest_info(builddir):
         cmd = "git rev-parse HEAD"
         output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
         if(output):
-            manifestCommit = output
+            manifestCommit = output.strip()
                 
         
     except Exception as err:
@@ -271,6 +287,8 @@ def get_buildinfo(prodname, prodversion, builddir, buildurl, forcebuilds=None):
     props={}
     props['product_name'] = prodname
     props['product_version'] = prodversion
+    props['product_build_number'] = str(buildnumber)
+    props['product_build_version'] = buildversion
     props['product_build_tag'] = buildtag
     props['product_manifest_url'] = manifesturl
     props['product_manifest_branch'] = manifestBranch
@@ -282,6 +300,8 @@ def get_buildinfo(prodname, prodversion, builddir, buildurl, forcebuilds=None):
         props[_dash_to_underscore(b.name) + '_build_tag'] = buildtag
         props[_dash_to_underscore(b.name) + '_build_needed'] = str(b.buildneeded)
         props[_dash_to_underscore(b.name) + '_build_commit'] = b.commit
+        props[_dash_to_underscore(b.name) + '_build_abbrevcommit'] = b.abbrevcommit
+        props[_dash_to_underscore(b.name) + '_build_commit_author'] = b.author
         props[_dash_to_underscore(b.name) + '_build_branch'] = b.branch
         
     _gen_prop_file(props, builddir)
