@@ -62,6 +62,7 @@ class Repo(object):
     def __init__(self, name, commit, abbrev_commit, branch, author):
         self._name = name
         self._commit = commit
+        self._abbrevcommit = abbrev_commit
         self._author = author
         self._branch = branch
         self._buildneeded = False
