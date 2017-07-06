@@ -9,6 +9,7 @@ import argparse
 import sys
 import requests
 import json
+import copy
 
 ALL_REPOS = ['test-repo1', 'test-repo2', 'test-repo3']
 
@@ -142,18 +143,46 @@ def _get_changed_repos_of_build(buildurl):
 
     return changedRepos
 
-def _get_repos_buildneeded(buildurl, forcebuilds=None):
+def _calculate_repos_buildneeded(builddir, currentRepos):
+    reposBuildNeeded = []
+    try:
+        repoGraphFile = builddir + os.sep + ".repo" + os.sep + "manifests" + os.sep + "repo_graph.json"
+        f = file(repoGraphFile,'r+');
+        s = json.load(f)
+        repoGraph = {}
+        for i in range(len(s)):
+            repoGraph["%s" % s[i]['name']] = s[i]['impact']
+            
+        if(currentRepos == "all"):
+            reposBuildNeeded = repoGraph.keys()
+        else:
+            reposBuildNeeded = copy.deepcopy(currentRepos)
+            for r in reposBuildNeeded:
+                impactRepos = repoGraph[r]
+                if(impactRepos and len(impactRepos) > 0):
+                    for ir in impactRepos:
+                        if ir not in reposBuildNeeded:
+                            reposBuildNeeded.append(ir)
+    except  IOError as ioe:
+        message = "\nIOError: " + "[Errno " + str(ioe.errno) + "] " + ioe.strerror + ": " + ioe.filename
+        raise ioe
+    except Exception as e:
+        message = "Failed to generate build info property file!\n" + e.message
+        raise e
+    finally:
+        if(f):
+            f.close()
+            
+    return reposBuildNeeded
+
+def _get_repos_buildneeded(builddir, buildurl, forcebuilds=None):
     reposneedbuild = [] 
-    if(forcebuilds and forcebuilds == "all"):
-        reposneedbuild = ALL_REPOS
-    elif(forcebuilds):
-        reposneedbuild = forcebuilds
+    if(forcebuilds):
+        reposneedbuild = _calculate_repos_buildneeded(builddir, forcebuilds)
     else:  
         changedRepos = _get_changed_repos(buildurl)
-        if('test-repo1' in changedRepos):
-            reposneedbuild = ALL_REPOS
-        else:
-            reposneedbuild = changedRepos
+        if(changedRepos):
+            reposneedbuild = _calculate_repos_buildneeded(builddir, changedRepos)
             
     return reposneedbuild
 
@@ -211,7 +240,7 @@ def _get_local_builddir_info(builddir, buildurl, forcebuilds=None):
     finally:
         ps.popd()
         
-    buildNeeded = _get_repos_buildneeded(buildurl, forcebuilds)
+    buildNeeded = _get_repos_buildneeded(builddir, buildurl, forcebuilds)
     for repo in repolist:
         if(repo.name in buildNeeded):
             repo.buildneeded = True
@@ -386,3 +415,4 @@ if __name__ == "__main__":
     #get_buildinfo("copd", "1.0.0", r"C:\Users\310276411\MyJenkins\local\workspace\copd-cibuild", "http://localhost:8080/jenkins/view/test/job/copd-cibuild/34/changes")
     #changedRepos = _get_changed_repos("http://localhost:8080/jenkins/view/test/job/copd-test-parallel-cibuild/11/")
     #print changedRepos
+    #print _calculate_repos_buildneeded("/Users/mike/Documents/MikeWorkspace/Philips/workspace/test", 'all')
