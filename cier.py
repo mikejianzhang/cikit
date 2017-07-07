@@ -11,8 +11,6 @@ import requests
 import json
 import copy
 
-ALL_REPOS = ['test-repo1', 'test-repo2', 'test-repo3']
-
 def _dash_to_underscore(value):
     return value.replace("-", "_")
 
@@ -336,6 +334,21 @@ def get_buildinfo(prodname, prodversion, builddir, buildurl, forcebuilds=None):
         
     _gen_prop_file(props, builddir)
     
+    return props
+
+def tag_current_build(builddir, props):
+    ps = PathStackMgr()
+    try:
+        cmd = "git tag %s %s" % (props["product_build_tag"], props["product_manifest_commit"])
+        ps.pushd(builddir + os.sep + ".repo" + os.sep + "manifests")
+        subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+        cmd = "git push origin %s" % props["product_build_tag"]
+        subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+    except Exception as err:
+        print err
+    finally:
+        ps.popd()
+    
 def prebuild(args):
     lforcebuilds = None
     if(args["forcebuilds"] and args["forcebuilds"] != "none"):
@@ -344,9 +357,8 @@ def prebuild(args):
         else:
             lforcebuilds = args["forcebuilds"].split(',')
     
-    print "lforcebuilds = %s" % lforcebuilds
-    
-    get_buildinfo(args["prodname"], args["prodversion"], args["builddir"], args["buildurl"], lforcebuilds)
+    props = get_buildinfo(args["prodname"], args["prodversion"], args["builddir"], args["buildurl"], lforcebuilds)
+    tag_current_build(args["builddir"], props)
 
 def postbuild(args):
         pass
