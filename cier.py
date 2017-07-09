@@ -50,8 +50,9 @@ class SimpleRestClient:
     
     @staticmethod
     def getStringContent(url, username=None, password=None):
-        auth = HTTPBasicAuth(username,password) if (username and password) else None
-        myResponse = requests.get(url, verify=False, auth=auth)
+        jauth = HTTPBasicAuth(username,password) if (username and password) else None
+        print jauth
+        myResponse = requests.get(url, verify=False, auth=jauth)
         
         if(not myResponse.ok):
             # If response code is not ok (200), print the resulting http error code with description
