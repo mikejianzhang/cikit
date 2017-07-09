@@ -10,6 +10,7 @@ import sys
 import requests
 import json
 import copy
+from requests.auth import HTTPBasicAuth
 
 def _dash_to_underscore(value):
     return value.replace("-", "_")
@@ -38,8 +39,8 @@ class PathStackMgr(object):
 
 class SimpleRestClient:
     @staticmethod
-    def getJSONContent(url):
-        content = SimpleRestClient.getStringContent(url)
+    def getJSONContent(url, username=None, password=None):
+        content = SimpleRestClient.getStringContent(url, username, password)
         
         # Loading the response data into a dict variable
         # json.loads takes in only binary or string variables so using content to fetch binary content
@@ -48,8 +49,9 @@ class SimpleRestClient:
         return jData
     
     @staticmethod
-    def getStringContent(url):
-        myResponse = requests.get(url, verify=False)
+    def getStringContent(url, username=None, password=None):
+        auth = HTTPBasicAuth(username,password) if (username and password) else None
+        myResponse = requests.get(url, verify=False, auth=auth)
         
         if(not myResponse.ok):
             # If response code is not ok (200), print the resulting http error code with description
@@ -112,7 +114,10 @@ def _get_changed_repos(buildurl):
     if(m):
         joburl = m.group(1)
         
-    jdata = SimpleRestClient.getJSONContent("%sapi/json?pretty=true" % joburl)
+    juname = os.getenv("jenkins_user")
+    jpassword = os.getenv("jenkins_user_password")
+        
+    jdata = SimpleRestClient.getJSONContent("%sapi/json?pretty=true" % joburl, juname, jpassword)
     lastSuccessfulBuildNumber = jdata["lastSuccessfulBuild"]["number"]
     for build in jdata["builds"]:
         if(build["number"] > lastSuccessfulBuildNumber):
