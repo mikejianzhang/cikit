@@ -51,7 +51,6 @@ class SimpleRestClient:
     @staticmethod
     def getStringContent(url, username=None, password=None):
         jauth = HTTPBasicAuth(username,password) if (username and password) else None
-        print jauth
         myResponse = requests.get(url, verify=False, auth=jauth)
         
         if(not myResponse.ok):
@@ -117,8 +116,6 @@ def _get_changed_repos(buildurl):
         
     juname = os.getenv("jenkins_user")
     jpassword = os.getenv("jenkins_user_password")
-    
-    print "Jenkins user name: %s\nJenkins password: %s\n" % (juname, jpassword)
         
     jdata = SimpleRestClient.getJSONContent("%sapi/json?pretty=true" % joburl, juname, jpassword)
     lastSuccessfulBuildNumber = jdata["lastSuccessfulBuild"]["number"]
@@ -141,7 +138,9 @@ def _get_changed_repos_of_build(buildurl):
     '''
     changedRepos = []
     buildchangeurl = "%schanges" % buildurl
-    data = urllib2.urlopen(buildchangeurl).read()
+    juname = os.getenv("jenkins_user")
+    jpassword = os.getenv("jenkins_user_password")
+    data = SimpleRestClient.getStringContent(buildchangeurl, juname, jpassword)
     pattern=r"Project:\s((?!\.repo).*)<br.*>"
     changesre = re.compile(pattern)
     if(changesre):
