@@ -116,6 +116,8 @@ def _get_changed_repos(buildurl):
         
     juname = os.getenv("jenkins_user")
     jpassword = os.getenv("jenkins_user_password")
+    
+    print "Jenkins user name: %s\nJenkins password: %s\n" % (juname, jpassword)
         
     jdata = SimpleRestClient.getJSONContent("%sapi/json?pretty=true" % joburl, juname, jpassword)
     lastSuccessfulBuildNumber = jdata["lastSuccessfulBuild"]["number"]
