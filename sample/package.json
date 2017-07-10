@@ -1,0 +1,55 @@
+{
+    "product": "test",
+    "version": "1.0.0",
+    "buildNumber": "88",
+    "repos": [
+        {
+            "repoName": "test-repo1",
+            "componets": [
+                {
+                    "name": "test-repo1",
+                    "storage": {
+                        "groupId": "com.philips.cdi.test",
+                        "artifactId": "test-repo1",
+                        "packaging": "jar",
+                        "version": "None",
+                        "classifier": "N/A"
+                    },
+                    "packageLayout": "None"
+                }
+            ]
+        },
+        {
+            "repoName": "test-repo2",
+            "componets": [
+                {
+                    "name": "test-repo2",
+                    "storage": {
+                        "groupId": "com.philips.cdi.test",
+                        "artifactId": "test-repo2",
+                        "packaging": "jar",
+                        "version": "None",
+                        "classifier": "N/A"
+                    },
+                    "packageLayout": "None"
+                }
+            ]
+        },
+        {
+            "repoName": "test-repo3",
+            "componets": [
+                {
+                    "name": "test-repo3",
+                    "storage": {
+                        "groupId": "com.philips.cdi.test",
+                        "artifactId": "test-repo3",
+                        "packaging": "jar",
+                        "version": "None",
+                        "classifier": "N/A"
+                    },
+                    "packageLayout": "None"
+                }
+            ]
+        }
+    ]
+}
