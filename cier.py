@@ -281,6 +281,7 @@ def _get_manifest_info(builddir):
     ps = PathStackMgr()
     manifestUrl = ""
     manifestBranch = ""
+    manifestRemoteBranch = ""
     manifestCommit = ""
     try:
         cmd = "git remote -vv"
@@ -297,10 +298,11 @@ def _get_manifest_info(builddir):
         cmd = "git branch -vv"
         output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
         if(output):
-            pattern = "^\*\s(.+)\s"
+            pattern = "^\*\s(.+?)\s.*\[origin\/(.+)\]"
             m = re.search(pattern, output)
             if(m):
                 manifestBranch = m.group(1)
+                manifestRemoteBranch = m.group(2)
                 
         cmd = "git rev-parse HEAD"
         output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
@@ -313,13 +315,13 @@ def _get_manifest_info(builddir):
     finally:
         ps.popd()
     
-    return (manifestUrl, manifestBranch, manifestCommit)
+    return (manifestUrl, manifestBranch, manifestRemoteBranch, manifestCommit)
 
 def get_buildinfo(prodname, prodversion, builddir, buildurl, forcebuilds=None):
     buildnumber = _get_next_buildnumber(prodname, prodversion, builddir)
     buildversion = "%s_b%s" % (prodversion, str(buildnumber))
     buildtag = "%s_%s_b%s" % (prodname, prodversion, str(buildnumber))
-    manifesturl, manifestBranch, manifestCommit = _get_manifest_info(builddir)
+    manifesturl, manifestBranch, manifestRemoteBranch, manifestCommit = _get_manifest_info(builddir)
     props={}
     props['product_name'] = prodname
     props['product_version'] = prodversion
@@ -328,6 +330,7 @@ def get_buildinfo(prodname, prodversion, builddir, buildurl, forcebuilds=None):
     props['product_build_tag'] = buildtag
     props['product_manifest_url'] = manifesturl
     props['product_manifest_branch'] = manifestBranch
+    props['product_manifest_remote_branch'] = manifestRemoteBranch
     props['product_manifest_commit'] = manifestCommit
     blist = _get_local_builddir_info(builddir, buildurl, forcebuilds)
     for b in blist:
@@ -471,3 +474,4 @@ if __name__ == "__main__":
     #changedRepos = _get_changed_repos("http://localhost:8080/jenkins/view/test/job/copd-test-parallel-cibuild/11/")
     #print changedRepos
     #print _calculate_repos_buildneeded("/Users/mike/Documents/MikeWorkspace/Philips/workspace/test", 'all')
+    #print _get_manifest_info("/Users/mike/Documents/MikeWorkspace/Philips/workspace/test")
