@@ -11,6 +11,7 @@ import requests
 import json
 import copy
 from requests.auth import HTTPBasicAuth
+from properties.p import Property
 
 def _dash_to_underscore(value):
     return value.replace("-", "_")
@@ -296,7 +297,7 @@ def _get_manifest_info(builddir):
         cmd = "git branch -vv"
         output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
         if(output):
-            pattern = ".*\[origin\/(.+)\].*"
+            pattern = "^\*\s(.+)\s"
             m = re.search(pattern, output)
             if(m):
                 manifestBranch = m.group(1)
@@ -355,6 +356,41 @@ def tag_current_build(builddir, props):
         print err
     finally:
         ps.popd()
+        
+def _gen_new_packageinfo(pre_released_packageinfo, pre_build_packageinfo, current_buildprops):
+    # return (full package info, patch package info, incremental package info)
+    pass
+
+def _save_packageinfo(packageinfo, outfile):
+    pass
+
+def _load_packageinfo(infile):
+    try:
+        f = file(infile,'r+');
+        s = json.load(f)
+        return s
+    except  IOError as ioe:
+        message = "\nIOError: " + "[Errno " + str(ioe.errno) + "] " + ioe.strerror + ": " + ioe.filename
+        raise ioe
+    except Exception as e:
+        message = "Failed to generate build info property file!\n" + e.message
+        raise e
+    finally:
+        if(f):
+            f.close()
+            
+def _load_buildproperties(inpropfile):
+    prop = Property()
+    dict_prop = prop.load_property_files(inpropfile)
+    print dict_prop
+
+def _compare_packageinfo(packageinfo1, packageinfo2):
+    # 1: greater than; 0: equal; -1: less than
+    pass
+
+
+
+
     
 def prebuild(args):
     lforcebuilds = None
