@@ -367,7 +367,7 @@ def _gen_new_packageinfo(pre_released_packageinfo, pre_build_packageinfo, curren
 def _save_packageinfo(packageinfo, outfile):
     pass
 
-def _load_packageinfo(infile):
+def _load_packageinfo_fromfile(infile):
     try:
         f = file(infile,'r+');
         s = json.load(f)
@@ -382,6 +382,14 @@ def _load_packageinfo(infile):
         if(f):
             f.close()
             
+def _load_packageinfo_fromstring(invalue):
+    try:
+        s = json.load(invalue)
+        return s
+    except Exception as e:
+        message = "Failed to generate build info property file!\n" + e.message
+        raise e
+            
 def _load_buildproperties(inpropfile):
     prop = Property()
     dict_prop = prop.load_property_files(inpropfile)
@@ -392,9 +400,6 @@ def _compare_packageinfo(packageinfo1, packageinfo2):
     pass
 
 
-
-
-    
 def prebuild(args):
     lforcebuilds = None
     if(args["forcebuilds"] and args["forcebuilds"] != "none"):
@@ -465,7 +470,7 @@ def main(argv):
     args.func(dictargs)
     
 if __name__ == "__main__":
-    main(sys.argv)
+    #main(sys.argv)
     #print _dash_to_underscore("test-repo1-yes")
     #build = _get_repos_buildneeded("http://localhost:8080/jenkins/job/copd-multi/11/changes", forcebuilds="all")
     #for x in build:
@@ -475,3 +480,6 @@ if __name__ == "__main__":
     #print changedRepos
     #print _calculate_repos_buildneeded("/Users/mike/Documents/MikeWorkspace/Philips/workspace/test", 'all')
     #print _get_manifest_info("/Users/mike/Documents/MikeWorkspace/Philips/workspace/test")
+    
+    packageinfo =  _load_packageinfo_fromfile(r"C:\Users\310276411\MyWork\GitHub\cikit\sample\package.json")
+    print packageinfo
