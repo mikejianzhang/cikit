@@ -5,9 +5,9 @@
     "storage": {
         "groupId": "com.free.freedivision.test",
         "artifactId": "test",
-        "packaging": "zip",
+        "packaging": "json",
         "version": "1.0.0_b88",
-        "classifier": "N/A"
+        "classifier": "full|patch|increment"
     },
     "repos": [
         {

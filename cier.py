@@ -384,7 +384,7 @@ def _load_packageinfo_fromfile(infile):
             
 def _load_packageinfo_fromstring(invalue):
     try:
-        s = json.load(invalue)
+        s = json.loads(invalue)
         return s
     except Exception as e:
         message = "Failed to generate build info property file!\n" + e.message
@@ -480,6 +480,15 @@ if __name__ == "__main__":
     #print changedRepos
     #print _calculate_repos_buildneeded("/Users/mike/Documents/MikeWorkspace/Philips/workspace/test", 'all')
     #print _get_manifest_info("/Users/mike/Documents/MikeWorkspace/Philips/workspace/test")
-    
-    packageinfo =  _load_packageinfo_fromfile(r"C:\Users\310276411\MyWork\GitHub\cikit\sample\package.json")
-    print packageinfo
+    ps = PathStackMgr()
+    try:
+        cmd = "git --no-pager show %s:%s" % ("default", "package.json")
+        ps.pushd("/Users/mike/Documents/MikeWorkspace/Philips/workspace/test" + os.sep + ".repo" + os.sep + "manifests")
+        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+        print output
+        s = _load_packageinfo_fromstring(output)
+        print s
+    except Exception as err:
+        print err
+    finally:
+        ps.popd()
