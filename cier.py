@@ -12,6 +12,7 @@ import json
 import copy
 from requests.auth import HTTPBasicAuth
 from properties.p import Property
+from errno import EMSGSIZE
 
 def _dash_to_underscore(value):
     return value.replace("-", "_")
@@ -365,19 +366,30 @@ def _gen_new_packageinfo(pre_released_packageinfo, pre_build_packageinfo, curren
     pass
 
 def _save_packageinfo(packageinfo, outfile):
-    pass
+    try:
+        f = open(outfile, 'w')
+        json.dump(packageinfo, f)
+    except IOError as ioe:
+        emsg = "I/O error({0}): {1}: file({2})".format(ioe.errno, ioe.strerror, ioe.filename)
+        print emsg
+    except Exception as e:
+        emsg = "Failed to serialize json object:{0}".format(sys.exc_info()[0])
+        print emsg
+    finally:
+        if(f):
+            f.close()
 
 def _load_packageinfo_fromfile(infile):
     try:
         f = file(infile,'r+');
         s = json.load(f)
         return s
-    except  IOError as ioe:
-        message = "\nIOError: " + "[Errno " + str(ioe.errno) + "] " + ioe.strerror + ": " + ioe.filename
-        raise ioe
+    except IOError as ioe:
+        emsg = "I/O error({0}): {1}: file({2})".format(ioe.errno, ioe.strerror, ioe.filename)
+        print emsg
     except Exception as e:
-        message = "Failed to generate build info property file!\n" + e.message
-        raise e
+        emsg = "Failed to deserialize json object:{0}".format(sys.exc_info()[0])
+        print emsg
     finally:
         if(f):
             f.close()
@@ -397,8 +409,20 @@ def _load_buildproperties(inpropfile):
 
 def _compare_packageinfo(packageinfo1, packageinfo2):
     # 1: greater than; 0: equal; -1: less than
-    pass
-
+    result = None
+    if(packageinfo1["version"] > packageinfo2["version"]):
+        result = 1
+    elif(packageinfo1["version"] < packageinfo2["version"]):
+        result = -1
+    else:
+        if(packageinfo1["buildNumber"] > packageinfo2["buildNumber"]):
+            result = 1
+        elif(packageinfo1["buildNumber"] < packageinfo2["buildNumber"]):
+            result = -1
+        else:
+            result = 0
+            
+    return result
 
 def prebuild(args):
     lforcebuilds = None
@@ -482,12 +506,17 @@ if __name__ == "__main__":
     #print _get_manifest_info("/Users/mike/Documents/MikeWorkspace/Philips/workspace/test")
     ps = PathStackMgr()
     try:
-        cmd = "git --no-pager show %s:%s" % ("default", "package.json")
-        ps.pushd("/Users/mike/Documents/MikeWorkspace/Philips/workspace/test" + os.sep + ".repo" + os.sep + "manifests")
+        cmd = "git --no-pager show %s:%s" % ("master", "sample/package.json")
+        ps.pushd("/Users/mike/Documents/MikeWorkspace/cikit")
         output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
         print output
         s = _load_packageinfo_fromstring(output)
         print s
+        outfile = "/Users/mike/Documents/MikeWorkspace/Philips/workspace/test/test.json"
+        _save_packageinfo(s, outfile)
+        
+        s1 = _load_packageinfo_fromfile(outfile)
+        print s1
     except Exception as err:
         print err
     finally:
