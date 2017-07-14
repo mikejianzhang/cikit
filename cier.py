@@ -428,6 +428,7 @@ def _load_packageinfo_fromstring(invalue):
         return s
     except Exception as e:
         message = "Failed to generate build info property file!\n" + e.message
+        print message
         raise e
             
 def _load_buildproperties(inpropfile):
