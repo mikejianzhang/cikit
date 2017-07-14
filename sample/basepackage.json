@@ -1,12 +1,12 @@
 {
     "product": "test",
-    "version": "1.0.0",
-    "buildNumber": "88",
+    "version": "0.0.1",
+    "buildNumber": "22",
     "storage": {
         "groupId": "com.free.freedivision.test",
         "artifactId": "test",
         "packaging": "json",
-        "version": "1.0.0_b88",
+        "version": "0.0.1_b22",
         "classifier": "full"
     },
     "repos": [
@@ -19,7 +19,7 @@
                         "groupId": "com.free.freedivision.test",
                         "artifactId": "test-repo1",
                         "packaging": "jar",
-                        "version": "None",
+                        "version": "0.0.1_b22",
                         "classifier": "N/A"
                     },
                     "packageLayout": "None"
@@ -35,7 +35,7 @@
                         "groupId": "com.free.freedivision.test",
                         "artifactId": "test-repo2",
                         "packaging": "jar",
-                        "version": "None",
+                        "version": "0.0.1_b22",
                         "classifier": "N/A"
                     },
                     "packageLayout": "None"
@@ -51,7 +51,7 @@
                         "groupId": "com.free.freedivision.test",
                         "artifactId": "test-repo3",
                         "packaging": "jar",
-                        "version": "None",
+                        "version": "0.0.1_b22",
                         "classifier": "N/A"
                     },
                     "packageLayout": "None"

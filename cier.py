@@ -362,8 +362,36 @@ def tag_current_build(builddir, props):
         ps.popd()
         
 def _gen_new_packageinfo(pre_released_packageinfo, pre_build_packageinfo, current_buildprops):
+    def _get_new_reposinfo(repo):
+        propname_prefix = _dash_to_underscore(repo["repoName"])
+        for component in repo["componets"]:
+            component["storage"]["version"] = current_buildprops["%s_build_version" % propname_prefix]
+        return repo
+    
+    def _filter_incremental_repo(repo):
+        result = False
+        propname_prefix = _dash_to_underscore(repo["repoName"])
+        if(current_buildprops["%s_build_needed" % propname_prefix] == "True"):
+            result = True
+        return result
+
     # return (full package info, patch package info, incremental package info)
-    pass
+    full_build_packageinfo = copy.deepcopy(pre_build_packageinfo)
+    full_build_packageinfo["version"] = current_buildprops["product_version"]
+    full_build_packageinfo["buildNumber"] = current_buildprops["product_build_number"]
+    full_build_packageinfo["storage"]["version"] = current_buildprops["product_build_version"]
+    full_build_packageinfo["repos"] = map(_get_new_reposinfo, full_build_packageinfo["repos"])
+    
+    incremental_packageinfo = {}
+    incremental_packageinfo["product"] = full_build_packageinfo["product"]
+    incremental_packageinfo["version"] = full_build_packageinfo["version"]
+    incremental_packageinfo["buildNumber"] = full_build_packageinfo["buildNumber"]
+    incremental_packageinfo["storage"] = copy.deepcopy(full_build_packageinfo["storage"])
+    incremental_packageinfo["storage"]["classifier"] = "increment"
+    incremental_packageinfo["repos"] = filter(_filter_incremental_repo, full_build_packageinfo["repos"])
+    
+    return (full_build_packageinfo, incremental_packageinfo)
+
 
 def _save_packageinfo(packageinfo, outfile):
     try:
@@ -405,7 +433,7 @@ def _load_packageinfo_fromstring(invalue):
 def _load_buildproperties(inpropfile):
     prop = Property()
     dict_prop = prop.load_property_files(inpropfile)
-    print dict_prop
+    return dict_prop
 
 def _compare_packageinfo(packageinfo1, packageinfo2):
     # 1: greater than; 0: equal; -1: less than
@@ -507,16 +535,13 @@ if __name__ == "__main__":
     ps = PathStackMgr()
     try:
         cmd = "git --no-pager show %s:%s" % ("master", "sample/package.json")
-        ps.pushd("/Users/mike/Documents/MikeWorkspace/cikit")
+        ps.pushd(r"C:\Users\310276411\MyWork\GitHub\cikit")
         output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
-        print output
         s = _load_packageinfo_fromstring(output)
-        print s
-        outfile = "/Users/mike/Documents/MikeWorkspace/Philips/workspace/test/test.json"
-        _save_packageinfo(s, outfile)
-        
-        s1 = _load_packageinfo_fromfile(outfile)
-        print s1
+        current_buildprops = _load_buildproperties(r"C:\Users\310276411\MyWork\GitHub\cikit\sample\build-info.properties")
+        (full_packageinfo, increment_packageinfo) = _gen_new_packageinfo(s, s, current_buildprops)
+        print full_packageinfo
+        print increment_packageinfo
     except Exception as err:
         print err
     finally:
