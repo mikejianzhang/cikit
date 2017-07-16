@@ -374,6 +374,25 @@ def _gen_new_packageinfo(pre_released_packageinfo, pre_build_packageinfo, curren
         if(current_buildprops["%s_build_needed" % propname_prefix] == "True"):
             result = True
         return result
+    
+    def _gen_filter_patch_repo(pre_released_repoinfo):
+        def _filter_patch_repo(repo):
+            result = False
+            repoName = repo["repoName"]
+            if(repoName not in pre_released_repoinfo.keys):
+                result = True
+            else:
+                for c in repo["components"]:
+                    cname = c["name"]
+                    if(cname not in pre_released_repoinfo[repoName].keys):
+                        result = True
+                        break
+                    else:
+                        if(c["storage"]["version"] != pre_released_repoinfo[repoName][cname]["storage"]["version"]):
+                            result = True
+                            break
+            return result
+        return _filter_patch_repo
 
     # return (full package info, patch package info, incremental package info)
     full_build_packageinfo = copy.deepcopy(pre_build_packageinfo)
@@ -389,6 +408,26 @@ def _gen_new_packageinfo(pre_released_packageinfo, pre_build_packageinfo, curren
     incremental_packageinfo["storage"] = copy.deepcopy(full_build_packageinfo["storage"])
     incremental_packageinfo["storage"]["classifier"] = "increment"
     incremental_packageinfo["repos"] = filter(_filter_incremental_repo, full_build_packageinfo["repos"])
+    
+    pre_released_packageinfo_repoinfo = {}
+    for repo in pre_released_packageinfo["repos"]:
+        repo_name = repo["repoName"]
+        components = {}
+        for component in repo["components"]:
+            cname = component["name"]
+            cinfo = {}
+            cinfo["storage"] = component["storage"]
+            cinfo["packageLayout"] = component["packageLayout"]
+            components[cname] = cinfo
+        pre_released_packageinfo_repoinfo[repo_name] = components
+    
+    patch_packageinfo = {}
+    patch_packageinfo["product"] = full_build_packageinfo["product"]
+    patch_packageinfo["version"] = full_build_packageinfo["version"]
+    patch_packageinfo["buildNumber"] = full_build_packageinfo["buildNumber"]
+    patch_packageinfo["storage"] = copy.deepcopy(full_build_packageinfo["storage"])
+    patch_packageinfo["storage"]["classifier"] = "patch"
+    patch_packageinfo["repos"] = filter(_gen_filter_patch_repo(pre_released_packageinfo_repoinfo), full_build_packageinfo["repos"])
     
     return (full_build_packageinfo, incremental_packageinfo)
 
