@@ -19,7 +19,7 @@
                         "groupId": "com.free.freedivision.test",
                         "artifactId": "test-repo1",
                         "packaging": "jar",
-                        "version": "1.0.0_b88",
+                        "version": "0.0.1_b22",
                         "classifier": "N/A"
                     },
                     "packageLayout": "None"
@@ -35,7 +35,7 @@
                         "groupId": "com.free.freedivision.test",
                         "artifactId": "test-repo2",
                         "packaging": "jar",
-                        "version": "1.0.0_b88",
+                        "version": "0.0.1_b22",
                         "classifier": "N/A"
                     },
                     "packageLayout": "None"
@@ -51,7 +51,7 @@
                         "groupId": "com.free.freedivision.test",
                         "artifactId": "test-repo3",
                         "packaging": "jar",
-                        "version": "1.0.0_b88",
+                        "version": "0.0.1_b22",
                         "classifier": "N/A"
                     },
                     "packageLayout": "None"

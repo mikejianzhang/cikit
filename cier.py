@@ -372,7 +372,7 @@ def _gen_new_packageinfo(pre_released_packageinfo, pre_build_packageinfo, curren
                                                 component["packageLayout"])
         return component_s
 
-    def _is_equal(component1, component1):
+    def _is_equal(component1, component2):
         result = False
         component1_s = _str_component(component1)
         component2_s = _str_component(component2)
@@ -382,7 +382,8 @@ def _gen_new_packageinfo(pre_released_packageinfo, pre_build_packageinfo, curren
     def _get_new_reposinfo(repo):
         propname_prefix = _dash_to_underscore(repo["repoName"])
         for component in repo["components"]:
-            component["storage"]["version"] = current_buildprops["%s_build_version" % propname_prefix]
+            if(current_buildprops["%s_build_needed" % propname_prefix] == "True"):
+                component["storage"]["version"] = current_buildprops["%s_build_version" % propname_prefix]
         return repo
     
     def _filter_incremental_repo(repo):
@@ -393,28 +394,34 @@ def _gen_new_packageinfo(pre_released_packageinfo, pre_build_packageinfo, curren
         return result
     
     def _get_patch_repos(full_build_packageinfo_repos):
-        patch_repos = {}
+        patch_repos = []
         pre_released_packageinfo_len = len(pre_released_packageinfo["repos"])
         pre_released_packageinfo_index = 0
         for repo in full_build_packageinfo_repos:
-            for pre_released_packageinfo_index in range(pre_released_packageinfo_len):
+            while(pre_released_packageinfo_index < pre_released_packageinfo_len):
                 if(repo["repoName"] == pre_released_packageinfo["repos"][pre_released_packageinfo_index]["repoName"]):
                     patch_components = []
-                    pre_released_components_len = len(prerepo["components"])
+                    pre_released_components_len = len(pre_released_packageinfo["repos"][pre_released_packageinfo_index]["components"])
                     pre_com_index = 0
                     for com in repo["components"]:
-                        for pre_com_index in range(pre_released_components_len):
-                            if(_is_equal(com, prerepo["components"][pre_com_index])):
+                        while (pre_com_index < pre_released_components_len):
+                            if(_is_equal(com, pre_released_packageinfo["repos"][pre_released_packageinfo_index]["components"][pre_com_index])):
                                 break
-                        if(pre_com_index < pre_released_components_len - 1):
+                            pre_com_index += 1
+
+                        if(pre_com_index > pre_released_components_len - 1):
                             patch_components.append(com)
+
                         pre_com_index = 0
 
-                    patch_repos[repo["repoName"]] = patch_components
+                    patch_repos.append({"repoName":repo["repoName"], "components":patch_components}) 
                     break
+                pre_released_packageinfo_index += 1
+
             if(pre_released_packageinfo_index > pre_released_packageinfo_len -1):
                 patch_repos.append(repo)
-                pre_released_packageinfo_index = 0
+
+            pre_released_packageinfo_index = 0
 
         return patch_repos
 
@@ -452,25 +459,13 @@ def _gen_new_packageinfo(pre_released_packageinfo, pre_build_packageinfo, curren
     incremental_packageinfo["storage"]["classifier"] = "increment"
     incremental_packageinfo["repos"] = filter(_filter_incremental_repo, full_build_packageinfo["repos"])
     
-    pre_released_packageinfo_repoinfo = {}
-    for repo in pre_released_packageinfo["repos"]:
-        repo_name = repo["repoName"]
-        components = {}
-        for component in repo["components"]:
-            cname = component["name"]
-            cinfo = {}
-            cinfo["storage"] = component["storage"]
-            cinfo["packageLayout"] = component["packageLayout"]
-            components[cname] = cinfo
-        pre_released_packageinfo_repoinfo[repo_name] = components
-    
     patch_packageinfo = {}
     patch_packageinfo["product"] = full_build_packageinfo["product"]
     patch_packageinfo["version"] = full_build_packageinfo["version"]
     patch_packageinfo["buildNumber"] = full_build_packageinfo["buildNumber"]
     patch_packageinfo["storage"] = copy.deepcopy(full_build_packageinfo["storage"])
     patch_packageinfo["storage"]["classifier"] = "patch"
-    patch_packageinfo["repos"] = filter(_gen_filter_patch_repo(pre_released_packageinfo_repoinfo), full_build_packageinfo["repos"])
+    patch_packageinfo["repos"] = _get_patch_repos(full_build_packageinfo["repos"])
     
     return (full_build_packageinfo, incremental_packageinfo, patch_packageinfo)
 
@@ -618,13 +613,13 @@ if __name__ == "__main__":
     ps = PathStackMgr()
     try:
         cmd = "git --no-pager show %s:%s" % ("master", "sample/package.json")
-        ps.pushd(r"C:\Users\310276411\MyWork\GitHub\cikit")
+        ps.pushd(r"/Users/mike/Documents/MikeWorkspace/cikit")
         output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
         s = _load_packageinfo_fromstring(output)
         cmd = "git --no-pager show %s:%s" % ("master", "sample/basepackage.json")
         output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
         bases = _load_packageinfo_fromstring(output)
-        current_buildprops = _load_buildproperties(r"C:\Users\310276411\MyWork\GitHub\cikit\sample\build-info.properties")
+        current_buildprops = _load_buildproperties(r"sample/build-info.properties")
         (full_packageinfo, increment_packageinfo, patch_packageinfo) = _gen_new_packageinfo(bases, s, current_buildprops)
         print full_packageinfo
         print increment_packageinfo
