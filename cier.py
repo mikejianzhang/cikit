@@ -362,6 +362,23 @@ def tag_current_build(builddir, props):
         ps.popd()
         
 def _gen_new_packageinfo(pre_released_packageinfo, pre_build_packageinfo, current_buildprops):
+    def _str_component(component):
+        component_s = "%s_%s_%s_%s_%s_%s_%s" % (component["name"],
+                                                component["storage"]["groupId"],
+                                                component["storage"]["artifactId"],
+                                                component["storage"]["packaging"],
+                                                component["storage"]["version"],
+                                                component["storage"]["classifier"],
+                                                component["packageLayout"])
+        return component_s
+
+    def _is_equal(component1, component1):
+        result = False
+        component1_s = _str_component(component1)
+        component2_s = _str_component(component2)
+        result = (component1_s == component2_s)
+        return result
+
     def _get_new_reposinfo(repo):
         propname_prefix = _dash_to_underscore(repo["repoName"])
         for component in repo["components"]:
@@ -375,6 +392,32 @@ def _gen_new_packageinfo(pre_released_packageinfo, pre_build_packageinfo, curren
             result = True
         return result
     
+    def _get_patch_repos(full_build_packageinfo_repos):
+        patch_repos = {}
+        pre_released_packageinfo_len = len(pre_released_packageinfo["repos"])
+        pre_released_packageinfo_index = 0
+        for repo in full_build_packageinfo_repos:
+            for pre_released_packageinfo_index in range(pre_released_packageinfo_len):
+                if(repo["repoName"] == pre_released_packageinfo["repos"][pre_released_packageinfo_index]["repoName"]):
+                    patch_components = []
+                    pre_released_components_len = len(prerepo["components"])
+                    pre_com_index = 0
+                    for com in repo["components"]:
+                        for pre_com_index in range(pre_released_components_len):
+                            if(_is_equal(com, prerepo["components"][pre_com_index])):
+                                break
+                        if(pre_com_index < pre_released_components_len - 1):
+                            patch_components.append(com)
+                        pre_com_index = 0
+
+                    patch_repos[repo["repoName"]] = patch_components
+                    break
+            if(pre_released_packageinfo_index > pre_released_packageinfo_len -1):
+                patch_repos.append(repo)
+                pre_released_packageinfo_index = 0
+
+        return patch_repos
+
     def _gen_filter_patch_repo(pre_released_repoinfo):
         def _filter_patch_repo(repo):
             result = False
