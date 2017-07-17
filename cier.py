@@ -364,7 +364,7 @@ def tag_current_build(builddir, props):
 def _gen_new_packageinfo(pre_released_packageinfo, pre_build_packageinfo, current_buildprops):
     def _get_new_reposinfo(repo):
         propname_prefix = _dash_to_underscore(repo["repoName"])
-        for component in repo["componets"]:
+        for component in repo["components"]:
             component["storage"]["version"] = current_buildprops["%s_build_version" % propname_prefix]
         return repo
     
@@ -379,12 +379,12 @@ def _gen_new_packageinfo(pre_released_packageinfo, pre_build_packageinfo, curren
         def _filter_patch_repo(repo):
             result = False
             repoName = repo["repoName"]
-            if(repoName not in pre_released_repoinfo.keys):
+            if(repoName not in pre_released_repoinfo.keys()):
                 result = True
             else:
                 for c in repo["components"]:
                     cname = c["name"]
-                    if(cname not in pre_released_repoinfo[repoName].keys):
+                    if(cname not in pre_released_repoinfo[repoName].keys()):
                         result = True
                         break
                     else:
@@ -429,7 +429,7 @@ def _gen_new_packageinfo(pre_released_packageinfo, pre_build_packageinfo, curren
     patch_packageinfo["storage"]["classifier"] = "patch"
     patch_packageinfo["repos"] = filter(_gen_filter_patch_repo(pre_released_packageinfo_repoinfo), full_build_packageinfo["repos"])
     
-    return (full_build_packageinfo, incremental_packageinfo)
+    return (full_build_packageinfo, incremental_packageinfo, patch_packageinfo)
 
 
 def _save_packageinfo(packageinfo, outfile):
@@ -578,10 +578,14 @@ if __name__ == "__main__":
         ps.pushd(r"C:\Users\310276411\MyWork\GitHub\cikit")
         output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
         s = _load_packageinfo_fromstring(output)
+        cmd = "git --no-pager show %s:%s" % ("master", "sample/basepackage.json")
+        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+        bases = _load_packageinfo_fromstring(output)
         current_buildprops = _load_buildproperties(r"C:\Users\310276411\MyWork\GitHub\cikit\sample\build-info.properties")
-        (full_packageinfo, increment_packageinfo) = _gen_new_packageinfo(s, s, current_buildprops)
+        (full_packageinfo, increment_packageinfo, patch_packageinfo) = _gen_new_packageinfo(bases, s, current_buildprops)
         print full_packageinfo
         print increment_packageinfo
+        print patch_packageinfo
     except Exception as err:
         print err
     finally:
