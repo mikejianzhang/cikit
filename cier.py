@@ -399,25 +399,35 @@ def _gen_new_packageinfo(pre_released_packageinfo, pre_build_packageinfo, curren
         pre_released_packageinfo_index = 0
         for repo in full_build_packageinfo_repos:
             while(pre_released_packageinfo_index < pre_released_packageinfo_len):
+                # This git repo exists in both this version and previous version of software, so we check the components.
+                #
                 if(repo["repoName"] == pre_released_packageinfo["repos"][pre_released_packageinfo_index]["repoName"]):
                     patch_components = []
                     pre_released_components_len = len(pre_released_packageinfo["repos"][pre_released_packageinfo_index]["components"])
                     pre_com_index = 0
                     for com in repo["components"]:
                         while (pre_com_index < pre_released_components_len):
+                            # If the component was the same, it shouldn't be included in the patch package info.
+                            #
                             if(_is_equal(com, pre_released_packageinfo["repos"][pre_released_packageinfo_index]["components"][pre_com_index])):
                                 break
                             pre_com_index += 1
 
+                        # If the component is different from previous components, it should be included included in the patch package info.
+                        #
                         if(pre_com_index > pre_released_components_len - 1):
                             patch_components.append(com)
 
                         pre_com_index = 0
+                    if(len(patch_components) > 0):
+                        patch_repos.append({"repoName":repo["repoName"], "components":patch_components})
 
-                    patch_repos.append({"repoName":repo["repoName"], "components":patch_components}) 
                     break
+
                 pre_released_packageinfo_index += 1
 
+            # A new git repo has been added in this version of software, so all the components should be included in current patch package info.
+            #
             if(pre_released_packageinfo_index > pre_released_packageinfo_len -1):
                 patch_repos.append(repo)
 
