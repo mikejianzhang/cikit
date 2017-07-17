@@ -12,7 +12,7 @@
     "repos": [
         {
             "repoName": "test-repo1",
-            "componets": [
+            "components": [
                 {
                     "name": "test-repo1",
                     "storage": {
@@ -28,7 +28,7 @@
         },
         {
             "repoName": "test-repo2",
-            "componets": [
+            "components": [
                 {
                     "name": "test-repo2",
                     "storage": {
@@ -44,7 +44,7 @@
         },
         {
             "repoName": "test-repo3",
-            "componets": [
+            "components": [
                 {
                     "name": "test-repo3",
                     "storage": {
