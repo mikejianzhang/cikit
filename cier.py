@@ -439,7 +439,7 @@ def _save_packageinfo(packageinfo, outfile):
     except IOError as ioe:
         emsg = "I/O error({0}): {1}: file({2})".format(ioe.errno, ioe.strerror, ioe.filename)
         print emsg
-    except Exception as e:
+    except:
         emsg = "Failed to serialize json object:{0}".format(sys.exc_info()[0])
         print emsg
     finally:
@@ -454,7 +454,7 @@ def _load_packageinfo_fromfile(infile):
     except IOError as ioe:
         emsg = "I/O error({0}): {1}: file({2})".format(ioe.errno, ioe.strerror, ioe.filename)
         print emsg
-    except Exception as e:
+    except:
         emsg = "Failed to deserialize json object:{0}".format(sys.exc_info()[0])
         print emsg
     finally:
