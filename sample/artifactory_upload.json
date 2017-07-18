@@ -1,0 +1,19 @@
+{
+    "files": [
+        {
+            "pattern": "test-1.0.0_b14-full.json",
+            "target": "tfstest-dev-local/com/free/freedivision/test/test/1.0.0_b14/test-1.0.0_b14-full.json",
+            "props": "type=json;status=ready"
+        },
+        {
+            "pattern": "test-1.0.0_b14-increment.json",
+            "target": "tfstest-dev-local/com/free/freedivision/test/test/1.0.0_b14/test-1.0.0_b14-increment.json",
+            "props": "type=json;status=ready"
+        },
+        {
+            "pattern": "test-1.0.0_b14-patch.json",
+            "target": "tfstest-dev-local/com/free/freedivision/test/test/1.0.0_b14/test-1.0.0_b14-patch.json",
+            "props": "type=json;status=ready"
+        }
+    ]
+}
