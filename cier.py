@@ -380,6 +380,12 @@ def _gen_new_packageinfo(pre_released_packageinfo, pre_build_packageinfo, curren
         return result
 
     def _get_new_reposinfo(repo):
+        # One git repository can generate one or more components, here we assume that once there is a change in
+        # the git repository, all the components will be generated a new version (current build version), so we should
+        # update all the components' version if the repository need to build (changes happened since last successful build).
+        # However, there is one situation that a git repository can be used to generate different components that have different
+        # version mechanism, for this kind of situation, usually different components are different software products.
+        #
         propname_prefix = _dash_to_underscore(repo["repoName"])
         for component in repo["components"]:
             if(current_buildprops["%s_build_needed" % propname_prefix] == "True"):
