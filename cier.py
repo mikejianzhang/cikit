@@ -615,17 +615,7 @@ def main(argv):
     dictargs = vars(args)
     args.func(dictargs)
     
-if __name__ == "__main__":
-    #main(sys.argv)
-    #print _dash_to_underscore("test-repo1-yes")
-    #build = _get_repos_buildneeded("http://localhost:8080/jenkins/job/copd-multi/11/changes", forcebuilds="all")
-    #for x in build:
-    #    print x
-    #get_buildinfo("copd", "1.0.0", r"C:\Users\310276411\MyJenkins\local\workspace\copd-cibuild", "http://localhost:8080/jenkins/view/test/job/copd-cibuild/34/changes")
-    #changedRepos = _get_changed_repos("http://localhost:8080/jenkins/view/test/job/copd-test-parallel-cibuild/11/")
-    #print changedRepos
-    #print _calculate_repos_buildneeded("/Users/mike/Documents/MikeWorkspace/Philips/workspace/test", 'all')
-    #print _get_manifest_info("/Users/mike/Documents/MikeWorkspace/Philips/workspace/test")
+def _test_package():
     ps = PathStackMgr()
     try:
         cmd = "git --no-pager show %s:%s" % ("master", "sample/package.json")
@@ -637,10 +627,41 @@ if __name__ == "__main__":
         bases = _load_packageinfo_fromstring(output)
         current_buildprops = _load_buildproperties(r"sample/build-info.properties")
         (full_packageinfo, increment_packageinfo, patch_packageinfo) = _gen_new_packageinfo(bases, s, current_buildprops)
-        print full_packageinfo
-        print increment_packageinfo
-        print patch_packageinfo
+        #print full_packageinfo
+        #print increment_packageinfo
+        #print patch_packageinfo
+        full_packageinfo_fn = "%s-%s-%s.%s" % (full_packageinfo["storage"]["artifactId"],
+                                               full_packageinfo["storage"]["version"],
+                                               full_packageinfo["storage"]["classifier"],
+                                               full_packageinfo["storage"]["packaging"])
+
+        increment_packageinfo_fn = "%s-%s-%s.%s" % (increment_packageinfo["storage"]["artifactId"],
+                                                    increment_packageinfo["storage"]["version"],
+                                                    increment_packageinfo["storage"]["classifier"],
+                                                    increment_packageinfo["storage"]["packaging"])
+
+        patch_packageinfo_fn = "%s-%s-%s.%s" % (patch_packageinfo["storage"]["artifactId"],
+                                               patch_packageinfo["storage"]["version"],
+                                               patch_packageinfo["storage"]["classifier"],
+                                               patch_packageinfo["storage"]["packaging"])
+
+        _save_packageinfo(full_packageinfo, full_packageinfo_fn)
+        _save_packageinfo(increment_packageinfo, increment_packageinfo_fn)
+        _save_packageinfo(patch_packageinfo, patch_packageinfo_fn)
     except Exception as err:
         print err
     finally:
         ps.popd()
+
+if __name__ == "__main__":
+    #main(sys.argv)
+    #print _dash_to_underscore("test-repo1-yes")
+    #build = _get_repos_buildneeded("http://localhost:8080/jenkins/job/copd-multi/11/changes", forcebuilds="all")
+    #for x in build:
+    #    print x
+    #get_buildinfo("copd", "1.0.0", r"C:\Users\310276411\MyJenkins\local\workspace\copd-cibuild", "http://localhost:8080/jenkins/view/test/job/copd-cibuild/34/changes")
+    #changedRepos = _get_changed_repos("http://localhost:8080/jenkins/view/test/job/copd-test-parallel-cibuild/11/")
+    #print changedRepos
+    #print _calculate_repos_buildneeded("/Users/mike/Documents/MikeWorkspace/Philips/workspace/test", 'all')
+    #print _get_manifest_info("/Users/mike/Documents/MikeWorkspace/Philips/workspace/test")
+    _test_package()
