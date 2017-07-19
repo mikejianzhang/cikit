@@ -12,6 +12,8 @@
     "repos": [
         {
             "repoName": "test-repo1",
+            "commit":"c59cbd0dde46f050a186a3c68c9c5de9e2bcd61e",
+            "author":"mikejianzhang@163.com",
             "components": [
                 {
                     "name": "test-repo1",
@@ -28,6 +30,8 @@
         },
         {
             "repoName": "test-repo2",
+            "commit":"6914795ccb36ba7fcddd0eb1e67a8ce3617613a4",
+            "author":"mikejianzhang@163.com",
             "components": [
                 {
                     "name": "test-repo2",
@@ -44,6 +48,8 @@
         },
         {
             "repoName": "test-repo3",
+            "commit":"6914795ccb36ba7fcddd0eb1e67a8ce3617613a4",
+            "author":"mikejianzhang@163.com",
             "components": [
                 {
                     "name": "test-repo3",

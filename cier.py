@@ -377,6 +377,7 @@ def _gen_new_packageinfo(pre_released_packageinfo, pre_build_packageinfo, curren
         component1_s = _str_component(component1)
         component2_s = _str_component(component2)
         result = (component1_s == component2_s)
+
         return result
 
     def _get_new_reposinfo(repo):
@@ -387,9 +388,12 @@ def _gen_new_packageinfo(pre_released_packageinfo, pre_build_packageinfo, curren
         # version mechanism, for this kind of situation, usually different components are different software products.
         #
         propname_prefix = _dash_to_underscore(repo["repoName"])
-        for component in repo["components"]:
-            if(current_buildprops["%s_build_needed" % propname_prefix] == "True"):
+        if(current_buildprops["%s_build_needed" % propname_prefix] == "True"):
+            repo["commit"] = current_buildprops["%s_build_commit" % propname_prefix]
+            repo["author"] = current_buildprops["%s_build_commit_author" % propname_prefix]
+            for component in repo["components"]:
                 component["storage"]["version"] = current_buildprops["%s_build_version" % propname_prefix]
+
         return repo
     
     def _filter_incremental_repo(repo):
