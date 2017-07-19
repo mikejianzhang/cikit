@@ -39,3 +39,10 @@ jfrog rt config --url=http://www.test.com:8080/artifactory --apikey=APtmqnQd2Scq
 
 3. Command to show the config of jfrog cli  
 jfrog cli config show
+
+# Concept point
+## In package.json
+- **component**: it should be generated from one git repository with ci build jobs, and it will consist of the final product package.  
+  However, the ci builds for one git repoistory may generate many binary files which will be part of the component will be treated  
+  as component. Also, some git repository from which the binary was generated was only used by other git repository and will be packaged  
+  in one or more real component, those binaries should also not be a component.
