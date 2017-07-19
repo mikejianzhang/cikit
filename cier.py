@@ -490,10 +490,10 @@ def _gen_new_packageinfo(pre_released_packageinfo, pre_build_packageinfo, curren
     return (full_build_packageinfo, incremental_packageinfo, patch_packageinfo)
 
 
-def _save_packageinfo(packageinfo, outfile):
+def _serialize_jsonobject(jobject, outfile):
     try:
         f = open(outfile, 'w')
-        json.dump(packageinfo, f)
+        json.dump(jobject, f)
     except IOError as ioe:
         emsg = "I/O error({0}): {1}: file({2})".format(ioe.errno, ioe.strerror, ioe.filename)
         print emsg
@@ -504,7 +504,7 @@ def _save_packageinfo(packageinfo, outfile):
         if(f):
             f.close()
 
-def _load_packageinfo_fromfile(infile):
+def _deserialize_jsonobject(infile):
     try:
         f = file(infile,'r+');
         s = json.load(f)
@@ -519,7 +519,7 @@ def _load_packageinfo_fromfile(infile):
         if(f):
             f.close()
             
-def _load_packageinfo_fromstring(invalue):
+def _deserialize_jsonobject_fromstring(invalue):
     try:
         s = json.loads(invalue)
         return s
@@ -619,16 +619,16 @@ def main(argv):
     dictargs = vars(args)
     args.func(dictargs)
     
-def _test_package():
+def _test_package(art_server_id, art_upload_repo):
     ps = PathStackMgr()
     try:
         cmd = "git --no-pager show %s:%s" % ("master", "sample/package.json")
         ps.pushd(r"/Users/mike/Documents/MikeWorkspace/cikit")
         output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
-        s = _load_packageinfo_fromstring(output)
+        s = _deserialize_jsonobject_fromstring(output)
         cmd = "git --no-pager show %s:%s" % ("master", "sample/basepackage.json")
         output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
-        bases = _load_packageinfo_fromstring(output)
+        bases = _deserialize_jsonobject_fromstring(output)
         current_buildprops = _load_buildproperties(r"sample/build-info.properties")
         (full_packageinfo, increment_packageinfo, patch_packageinfo) = _gen_new_packageinfo(bases, s, current_buildprops)
         #print full_packageinfo
@@ -638,20 +638,49 @@ def _test_package():
                                                full_packageinfo["storage"]["version"],
                                                full_packageinfo["storage"]["classifier"],
                                                full_packageinfo["storage"]["packaging"])
+        full_packageinfo_grouppath = full_packageinfo["storage"]["groupId"].replace(".", "/")
+        full_packageinfo_artpath = "%s/%s/%s/%s/%s" % (art_upload_repo, 
+                                                       full_packageinfo_grouppath, 
+                                                       full_packageinfo["storage"]["artifactId"],
+                                                       full_packageinfo["storage"]["version"],
+                                                       full_packageinfo_fn)
+        spec_f1 = {"pattern":full_packageinfo_fn, "target":full_packageinfo_artpath}
 
         increment_packageinfo_fn = "%s-%s-%s.%s" % (increment_packageinfo["storage"]["artifactId"],
                                                     increment_packageinfo["storage"]["version"],
                                                     increment_packageinfo["storage"]["classifier"],
                                                     increment_packageinfo["storage"]["packaging"])
+        increment_packageinfo_grouppath = increment_packageinfo["storage"]["groupId"].replace(".", "/")
+        increment_packageinfo_artpath = "%s/%s/%s/%s/%s" % (art_upload_repo, 
+                                                       increment_packageinfo_grouppath, 
+                                                       increment_packageinfo["storage"]["artifactId"],
+                                                       increment_packageinfo["storage"]["version"],
+                                                       increment_packageinfo_fn)
+        spec_f2 = {"pattern":increment_packageinfo_fn, "target":increment_packageinfo_artpath}
 
         patch_packageinfo_fn = "%s-%s-%s.%s" % (patch_packageinfo["storage"]["artifactId"],
                                                patch_packageinfo["storage"]["version"],
                                                patch_packageinfo["storage"]["classifier"],
                                                patch_packageinfo["storage"]["packaging"])
+        patch_packageinfo_grouppath = increment_packageinfo["storage"]["groupId"].replace(".", "/")
+        patch_packageinfo_artpath = "%s/%s/%s/%s/%s" % (art_upload_repo, 
+                                                       patch_packageinfo_grouppath, 
+                                                       patch_packageinfo["storage"]["artifactId"],
+                                                       patch_packageinfo["storage"]["version"],
+                                                       patch_packageinfo_fn)
+        spec_f3 = {"pattern":patch_packageinfo_fn, "target":patch_packageinfo_artpath}
+        
+        art_upload_filespec = {"files":[spec_f1, spec_f2, spec_f3]}
 
-        _save_packageinfo(full_packageinfo, full_packageinfo_fn)
-        _save_packageinfo(increment_packageinfo, increment_packageinfo_fn)
-        _save_packageinfo(patch_packageinfo, patch_packageinfo_fn)
+        _serialize_jsonobject(full_packageinfo, full_packageinfo_fn)
+        _serialize_jsonobject(increment_packageinfo, increment_packageinfo_fn)
+        _serialize_jsonobject(patch_packageinfo, patch_packageinfo_fn)
+        
+        _serialize_jsonobject(art_upload_filespec, "art_upload.spec")
+
+        cmd = "jfrog rt upload --server-id=%s --spec=%s" % (art_server_id, "art_upload.spec")
+        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+        print output
     except Exception as err:
         print err
     finally:
@@ -668,4 +697,4 @@ if __name__ == "__main__":
     #print changedRepos
     #print _calculate_repos_buildneeded("/Users/mike/Documents/MikeWorkspace/Philips/workspace/test", 'all')
     #print _get_manifest_info("/Users/mike/Documents/MikeWorkspace/Philips/workspace/test")
-    _test_package()
+    _test_package("mikepro-artifactory", "tfstest-dev-local")
