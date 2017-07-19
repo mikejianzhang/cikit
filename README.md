@@ -22,7 +22,7 @@ jfrog rt config --url=http://www.test.com:8080/artifactory --apikey=APtmqnQd2Scq
 
 "~/.jfrog/jfrog-cli.conf":  
 
-'''
+```
 {
   "artifactory": [
     {
@@ -34,7 +34,8 @@ jfrog rt config --url=http://www.test.com:8080/artifactory --apikey=APtmqnQd2Scq
   ],
   "Version": "1"
 }
-'''
+
+```
 
 3. Command to show the config of jfrog cli  
 jfrog cli config show
