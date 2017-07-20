@@ -552,7 +552,7 @@ def upload_artifact_byspec(builddir, art_server_id, art_upload_spec_file):
     ps = PathStackMgr()
     try:
         ps.pushd(builddir)
-        cmd = "jfrog rt upload --server-id=%s --spec=%s" % (art_server_id, art_upload_spec_file)
+        cmd = "jfrog rt upload --flat=true --server-id=%s --spec=%s" % (art_server_id, art_upload_spec_file)
         output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
         ps.popd()
     except Exception as err:
@@ -560,12 +560,28 @@ def upload_artifact_byspec(builddir, art_server_id, art_upload_spec_file):
     finally:
         ps.popd()
         
-def upload_artifact_byfile(builddir, art_server_id, source_file, art_target_file):
+def upload_artifact_byfile(builddir, art_server_id, local_source_file, art_target_file):
     ps = PathStackMgr()
     try:
-        ps.pushd(builddir + os.sep + art_upload_spec_file)
-        cmd = "jfrog rt upload --server-id=%s --spec=%s" % (art_server_id, art_upload_spec_file)
+        ps.pushd(builddir)
+        cmd = "jfrog rt upload --flat=true --server-id=%s %s %s" % (art_server_id, local_source_file, art_target_file)
         output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+        ps.popd()
+    except Exception as err:
+        print err
+    finally:
+        ps.popd()
+        
+def download_artifact_byfile(builddir, art_server_id, art_source_file, local_target_dir):
+    ps = PathStackMgr()
+    try:
+        if(not os.path.isdir(local_target_dir)):
+            raise Exception("%s is not a directory" % local_target_dir)
+
+        ps.pushd(builddir)
+        cmd = "jfrog rt download --flat=false --server-id=%s %s %s" % (art_server_id, art_source_file, local_target_dir)
+        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+        ps.popd()
     except Exception as err:
         print err
     finally:
@@ -795,4 +811,6 @@ if __name__ == "__main__":
     #print _calculate_repos_buildneeded("/Users/mike/Documents/MikeWorkspace/Philips/workspace/test", 'all')
     #print _get_manifest_info("/Users/mike/Documents/MikeWorkspace/Philips/workspace/test")
     #_test_package("mikepro-artifactory", "tfstest-dev-local")
-    postbuild(None)
+    #postbuild(None)
+    #download_artifact_byfile("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "tfstest-group/com/free/freedivision/test/test/1.0.0_b14/test-1.0.0_b14-full.json", "/Users/mike/.butler/data/")
+    upload_artifact_byfile("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "build-info.properties", "tfstest-group/com/free/freedivision/test/test/1.0.0_b14/build-info.properties")
