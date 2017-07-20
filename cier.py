@@ -557,9 +557,14 @@ def prebuild(args):
             lforcebuilds = "all"
         else:
             lforcebuilds = args["forcebuilds"].split(',')
+            
+    prodname = args["prodname"]
+    prodversion = args["prodversion"]
+    builddir = args["builddir"]
+    buildurl = args["buildurl"]
     
-    props = get_buildinfo(args["prodname"], args["prodversion"], args["builddir"], args["buildurl"], lforcebuilds)
-    tag_current_build(args["builddir"], props)
+    props = get_buildinfo(prodname, prodversion, builddir, buildurl, lforcebuilds)
+    tag_current_build(buildurl, props)
 
 def postbuild(args):
         pass
@@ -618,6 +623,7 @@ def main(argv):
     args = parser.parse_args(argv[1:])
     dictargs = vars(args)
     args.func(dictargs)
+    
     
 def _test_package(art_server_id, art_upload_repo):
     ps = PathStackMgr()
