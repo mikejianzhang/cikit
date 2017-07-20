@@ -12,7 +12,6 @@ import json
 import copy
 from requests.auth import HTTPBasicAuth
 from properties.p import Property
-from errno import EMSGSIZE
 
 def _dash_to_underscore(value):
     return value.replace("-", "_")
@@ -361,6 +360,66 @@ def tag_current_build(builddir, props):
     finally:
         ps.popd()
         
+def _serialize_jsonobject(jobject, outfile):
+    try:
+        f = open(outfile, 'w')
+        json.dump(jobject, f)
+    except IOError as ioe:
+        emsg = "I/O error({0}): {1}: file({2})".format(ioe.errno, ioe.strerror, ioe.filename)
+        print emsg
+    except:
+        emsg = "Failed to serialize json object:{0}".format(sys.exc_info()[0])
+        print emsg
+    finally:
+        if(f):
+            f.close()
+
+def _deserialize_jsonobject(infile):
+    try:
+        f = file(infile,'r+');
+        s = json.load(f)
+        return s
+    except IOError as ioe:
+        emsg = "I/O error({0}): {1}: file({2})".format(ioe.errno, ioe.strerror, ioe.filename)
+        print emsg
+    except:
+        emsg = "Failed to deserialize json object:{0}".format(sys.exc_info()[0])
+        print emsg
+    finally:
+        if(f):
+            f.close()
+            
+def _deserialize_jsonobject_fromstring(invalue):
+    try:
+        s = json.loads(invalue)
+        return s
+    except Exception as e:
+        message = "Failed to generate build info property file!\n" + e.message
+        print message
+        raise e
+            
+def _load_buildproperties(inpropfile):
+    prop = Property()
+    dict_prop = prop.load_property_files(inpropfile)
+    return dict_prop
+
+def _compare_packageinfo(packageinfo1, packageinfo2):
+    # 1: greater than; 0: equal; -1: less than
+    result = None
+    if(packageinfo1["version"] > packageinfo2["version"]):
+        result = 1
+    elif(packageinfo1["version"] < packageinfo2["version"]):
+        result = -1
+    else:
+        if(packageinfo1["buildNumber"] > packageinfo2["buildNumber"]):
+            result = 1
+        elif(packageinfo1["buildNumber"] < packageinfo2["buildNumber"]):
+            result = -1
+        else:
+            result = 0
+            
+    return result
+        
 def _gen_new_packageinfo(pre_released_packageinfo, pre_build_packageinfo, current_buildprops):
     def _str_component(component):
         component_s = "%s_%s_%s_%s_%s_%s_%s" % (component["name"],
@@ -489,66 +548,93 @@ def _gen_new_packageinfo(pre_released_packageinfo, pre_build_packageinfo, curren
     
     return (full_build_packageinfo, incremental_packageinfo, patch_packageinfo)
 
-
-def _serialize_jsonobject(jobject, outfile):
+def upload_artifact_byspec(builddir, art_server_id, art_upload_spec_file):
+    ps = PathStackMgr()
     try:
-        f = open(outfile, 'w')
-        json.dump(jobject, f)
-    except IOError as ioe:
-        emsg = "I/O error({0}): {1}: file({2})".format(ioe.errno, ioe.strerror, ioe.filename)
-        print emsg
-    except:
-        emsg = "Failed to serialize json object:{0}".format(sys.exc_info()[0])
-        print emsg
+        ps.pushd(builddir)
+        cmd = "jfrog rt upload --server-id=%s --spec=%s" % (art_server_id, art_upload_spec_file)
+        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+        ps.popd()
+    except Exception as err:
+        print err
     finally:
-        if(f):
-            f.close()
-
-def _deserialize_jsonobject(infile):
+        ps.popd()
+        
+def upload_artifact_byfile(builddir, art_server_id, source_file, art_target_file):
+    ps = PathStackMgr()
     try:
-        f = file(infile,'r+');
-        s = json.load(f)
-        return s
-    except IOError as ioe:
-        emsg = "I/O error({0}): {1}: file({2})".format(ioe.errno, ioe.strerror, ioe.filename)
-        print emsg
-    except:
-        emsg = "Failed to deserialize json object:{0}".format(sys.exc_info()[0])
-        print emsg
+        ps.pushd(builddir + os.sep + art_upload_spec_file)
+        cmd = "jfrog rt upload --server-id=%s --spec=%s" % (art_server_id, art_upload_spec_file)
+        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+    except Exception as err:
+        print err
     finally:
-        if(f):
-            f.close()
-            
-def _deserialize_jsonobject_fromstring(invalue):
-    try:
-        s = json.loads(invalue)
-        return s
-    except Exception as e:
-        message = "Failed to generate build info property file!\n" + e.message
-        print message
-        raise e
-            
-def _load_buildproperties(inpropfile):
-    prop = Property()
-    dict_prop = prop.load_property_files(inpropfile)
-    return dict_prop
+        ps.popd()
 
-def _compare_packageinfo(packageinfo1, packageinfo2):
-    # 1: greater than; 0: equal; -1: less than
-    result = None
-    if(packageinfo1["version"] > packageinfo2["version"]):
-        result = 1
-    elif(packageinfo1["version"] < packageinfo2["version"]):
-        result = -1
-    else:
-        if(packageinfo1["buildNumber"] > packageinfo2["buildNumber"]):
-            result = 1
-        elif(packageinfo1["buildNumber"] < packageinfo2["buildNumber"]):
-            result = -1
-        else:
-            result = 0
-            
-    return result
+def pack_product(builddir, base_prodtag, art_repo):
+    ps = PathStackMgr()
+    try:
+        current_buildprops = _load_buildproperties(builddir + os.sep + "build-info.properties")
+        ps.pushd(builddir + os.sep + ".repo" + os.sep + "manifests")
+        cmd = "git --no-pager show %s:%s" % (current_buildprops["product_manifest_branch"], "package.json")
+        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+        pre_packageinfo_s = _deserialize_jsonobject_fromstring(output)
+        
+        cmd = "git --no-pager show %s:%s" % (base_prodtag, "package.json")
+        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+        base_packageinfo_s = _deserialize_jsonobject_fromstring(output)
+        ps.popd()
+
+        (full_packageinfo, increment_packageinfo, patch_packageinfo) = _gen_new_packageinfo(base_packageinfo_s, pre_packageinfo_s, current_buildprops)
+
+        full_packageinfo_fn = "%s-%s-%s.%s" % (full_packageinfo["storage"]["artifactId"],
+                                               full_packageinfo["storage"]["version"],
+                                               full_packageinfo["storage"]["classifier"],
+                                               full_packageinfo["storage"]["packaging"])
+        full_packageinfo_grouppath = full_packageinfo["storage"]["groupId"].replace(".", "/")
+        full_packageinfo_artpath = "%s/%s/%s/%s/%s" % (art_repo, 
+                                                       full_packageinfo_grouppath, 
+                                                       full_packageinfo["storage"]["artifactId"],
+                                                       full_packageinfo["storage"]["version"],
+                                                       full_packageinfo_fn)
+        spec_f1 = {"pattern":full_packageinfo_fn, "target":full_packageinfo_artpath}
+
+        increment_packageinfo_fn = "%s-%s-%s.%s" % (increment_packageinfo["storage"]["artifactId"],
+                                                    increment_packageinfo["storage"]["version"],
+                                                    increment_packageinfo["storage"]["classifier"],
+                                                    increment_packageinfo["storage"]["packaging"])
+        increment_packageinfo_grouppath = increment_packageinfo["storage"]["groupId"].replace(".", "/")
+        increment_packageinfo_artpath = "%s/%s/%s/%s/%s" % (art_repo, 
+                                                       increment_packageinfo_grouppath, 
+                                                       increment_packageinfo["storage"]["artifactId"],
+                                                       increment_packageinfo["storage"]["version"],
+                                                       increment_packageinfo_fn)
+        spec_f2 = {"pattern":increment_packageinfo_fn, "target":increment_packageinfo_artpath}
+
+        patch_packageinfo_fn = "%s-%s-%s.%s" % (patch_packageinfo["storage"]["artifactId"],
+                                               patch_packageinfo["storage"]["version"],
+                                               patch_packageinfo["storage"]["classifier"],
+                                               patch_packageinfo["storage"]["packaging"])
+        patch_packageinfo_grouppath = increment_packageinfo["storage"]["groupId"].replace(".", "/")
+        patch_packageinfo_artpath = "%s/%s/%s/%s/%s" % (art_repo, 
+                                                       patch_packageinfo_grouppath, 
+                                                       patch_packageinfo["storage"]["artifactId"],
+                                                       patch_packageinfo["storage"]["version"],
+                                                       patch_packageinfo_fn)
+        spec_f3 = {"pattern":patch_packageinfo_fn, "target":patch_packageinfo_artpath}
+        
+        art_upload_filespec = {"files":[spec_f1, spec_f2, spec_f3]}
+
+        ps.pushd(builddir)
+        _serialize_jsonobject(full_packageinfo, full_packageinfo_fn)
+        _serialize_jsonobject(increment_packageinfo, increment_packageinfo_fn)
+        _serialize_jsonobject(patch_packageinfo, patch_packageinfo_fn)
+        _serialize_jsonobject(art_upload_filespec, "art_upload.spec")
+        ps.popd()
+    except Exception as err:
+        print err
+    finally:
+        ps.popd()
 
 def prebuild(args):
     lforcebuilds = None
@@ -567,7 +653,12 @@ def prebuild(args):
     tag_current_build(buildurl, props)
 
 def postbuild(args):
-        pass
+    builddir = "/Users/mike/Documents/MikeWorkspace/cikit/test"
+    base_prodtag = "product_test_0.0.1_b66"
+    art_server_id = "mikepro-artifactory"
+    art_repo = "tfstest-group"
+    pack_product(builddir, base_prodtag, art_repo)
+    upload_artifact_byspec(builddir, art_server_id, "art_upload.spec")
     
 def main(argv):
     # python cikit.py
@@ -703,4 +794,5 @@ if __name__ == "__main__":
     #print changedRepos
     #print _calculate_repos_buildneeded("/Users/mike/Documents/MikeWorkspace/Philips/workspace/test", 'all')
     #print _get_manifest_info("/Users/mike/Documents/MikeWorkspace/Philips/workspace/test")
-    _test_package("mikepro-artifactory", "tfstest-dev-local")
+    #_test_package("mikepro-artifactory", "tfstest-dev-local")
+    postbuild(None)
