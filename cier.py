@@ -10,6 +10,7 @@ import sys
 import requests
 import json
 import copy
+import hashlib
 from requests.auth import HTTPBasicAuth
 from properties.p import Property
 
@@ -59,6 +60,23 @@ class SimpleRestClient:
             myResponse.raise_for_status()
 
         return myResponse.content
+
+class FileManager(object):
+    @staticmethod
+    def saveTextFile(filepath, content):
+        try:
+            with open(filepath, "w") as f:
+                f.write(content)
+        except Exception as err:
+            print err
+
+    @staticmethod
+    def gen_file_md5sum(filepath, save=True):
+        target_md5sum_file = filepath + ".md5"
+        fchs = hashlib.md5(filepath).hexdigest()
+        if(save):
+            FileManager.saveTextFile(target_md5sum_file, fchs)
+        return fchs
 
 class Repo(object):
     def __init__(self, name, commit, abbrev_commit, branch, author):
@@ -578,6 +596,18 @@ def download_artifact_byspec(builddir, art_server_id, art_download_spec_file):
         ps.pushd(builddir)
         cmd = "jfrog rt download --flat=false --server-id=%s --spec=%s" % (art_server_id, art_download_spec_file)
         output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+        pattern = "^.+?\/(.+)$"
+        dobject = _deserialize_jsonobject(art_download_spec_file)
+        for file in dobject["files"]:
+            m = re.search(pattern, file["pattern"])
+            partial_target_fp = ""
+            if(m):
+                partial_target_fp = m.group(1)
+            else:
+                raise Exception("Can't find art source file!")
+
+            target_fp = file["target"] + os.sep + partial_target_fp
+            FileManager.gen_file_md5sum(target_fp)
         ps.popd()
     except Exception as err:
         print err
@@ -594,6 +624,16 @@ def download_artifact_byfile(builddir, art_server_id, art_source_file, local_tar
         cmd = "jfrog rt download --flat=false --server-id=%s %s %s" % (art_server_id, art_source_file, local_target_dir)
         output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
         ps.popd()
+        pattern = "^.+?\/(.+)$"
+        m = re.search(pattern, art_source_file)
+        partial_target_fp = ""
+        if(m):
+            partial_target_fp = m.group(1)
+        else:
+            raise Exception("Can't find art source file!")
+
+        target_fp = local_target_dir + os.sep + partial_target_fp
+        FileManager.gen_file_md5sum(target_fp)
     except Exception as err:
         print err
     finally:
@@ -688,6 +728,13 @@ def postbuild(args):
     pack_product(builddir, base_prodtag, art_repo)
     upload_artifact_byspec(builddir, art_server_id, "art_upload.spec")
     
+def download_product(art_server_id, art_source_file, product_type):
+    """
+    :param art_server_id: string
+    :param art_source_file: string
+    :param product_type: string, composite|single
+    """
+
 def main(argv):
     # python cikit.py
     #
@@ -832,5 +879,5 @@ if __name__ == "__main__":
     #upload_artifact_byfile("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "test-repo1-1.0.0_b14.jar", "tfstest-group/com/free/freedivision/test/test-repo1/1.0.0_b14/test-repo1-1.0.0_b14.jar")
     #upload_artifact_byfile("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "test-repo2-1.0.0_b14.jar", "tfstest-group/com/free/freedivision/test/test-repo2/1.0.0_b14/test-repo2-1.0.0_b14.jar")
     #upload_artifact_byfile("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "test-repo3-0.0.1_b66.jar", "tfstest-group/com/free/freedivision/test/test-repo3/0.0.1_b66/test-repo3-0.0.1_b66.jar")
-    #download_artifact_byspec("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "art_download.json")
-    pass
+    download_artifact_byspec("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "art_download.json")
+    #pass
