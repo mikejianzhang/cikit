@@ -1,4 +1,17 @@
-[{"name":"test-repo1", "impact":["test-repo2", "test-repo3"]},
-{"name":"test-repo2", "impact":[]},
-{"name":"test-repo3", "impact":[]}
+[
+    {
+        "name": "test-repo1",
+        "impact": [
+            "test-repo2",
+            "test-repo3"
+        ]
+    },
+    {
+        "name": "test-repo2",
+        "impact": []
+    },
+    {
+        "name": "test-repo3",
+        "impact": []
+    }
 ]

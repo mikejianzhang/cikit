@@ -572,6 +572,18 @@ def upload_artifact_byfile(builddir, art_server_id, local_source_file, art_targe
     finally:
         ps.popd()
         
+def download_artifact_byspec(builddir, art_server_id, art_download_spec_file):
+    ps = PathStackMgr()
+    try:
+        ps.pushd(builddir)
+        cmd = "jfrog rt download --flat=false --server-id=%s --spec=%s" % (art_server_id, art_download_spec_file)
+        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+        ps.popd()
+    except Exception as err:
+        print err
+    finally:
+        ps.popd()
+        
 def download_artifact_byfile(builddir, art_server_id, art_source_file, local_target_dir):
     ps = PathStackMgr()
     try:
@@ -813,4 +825,12 @@ if __name__ == "__main__":
     #_test_package("mikepro-artifactory", "tfstest-dev-local")
     #postbuild(None)
     #download_artifact_byfile("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "tfstest-group/com/free/freedivision/test/test/1.0.0_b14/test-1.0.0_b14-full.json", "/Users/mike/.butler/data/")
-    upload_artifact_byfile("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "build-info.properties", "tfstest-group/com/free/freedivision/test/test/1.0.0_b14/build-info.properties")
+    #upload_artifact_byfile("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "build-info.properties", "tfstest-group/com/free/freedivision/test/test/1.0.0_b14/build-info.properties")
+    #download_artifact_byfile("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "tfstest-group/com/freessure/coffee/mikeapp1/service/1.0_b41/service-1.0_b41.jar", "/Users/mike/.butler/data/")
+    #download_artifact_byfile("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "tfstest-group/com/freessure/coffee/mikeapp1/service/1.0_b37/service-1.0_b37.jar", "/Users/mike/.butler/data/")
+    #download_artifact_byfile("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "tfstest-group/com/freessure/coffee/mikeapp1/service/1.0_b36/service-1.0_b36.jar", "/Users/mike/.butler/data/")
+    #upload_artifact_byfile("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "test-repo1-1.0.0_b14.jar", "tfstest-group/com/free/freedivision/test/test-repo1/1.0.0_b14/test-repo1-1.0.0_b14.jar")
+    #upload_artifact_byfile("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "test-repo2-1.0.0_b14.jar", "tfstest-group/com/free/freedivision/test/test-repo2/1.0.0_b14/test-repo2-1.0.0_b14.jar")
+    #upload_artifact_byfile("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "test-repo3-0.0.1_b66.jar", "tfstest-group/com/free/freedivision/test/test-repo3/0.0.1_b66/test-repo3-0.0.1_b66.jar")
+    #download_artifact_byspec("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "art_download.json")
+    pass
