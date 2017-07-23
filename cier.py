@@ -14,10 +14,27 @@ import hashlib
 from requests.auth import HTTPBasicAuth
 from properties.p import Property
 import platform
-from _threading_local import local
 
 def _dash_to_underscore(value):
     return value.replace("-", "_")
+
+class ButlerConfig(object):
+    _home = os.path.expanduser("~")
+    @staticmethod
+    def load():
+        if(not os.path.exists(os.path.join(_home,".butler"))):
+            os.mkdir(os.path.join(_home,".butler"))
+            
+        if(not os.path.exists(os.path.join(_home,".butler", "butler.conf"))):
+            jenkins = []
+            jenkins.append({"url":"http(s)://xxxx/jenkins/", "user":"<user>", "password":"<password>",
+                            "serverId":"<jenkins-id>", "isDefault":"true"})
+            config_template = {"jenkins":jenkins}
+            _serialize_jsonobject(config_template, os.path.join(_home,".butler", "butler.conf"))
+            raise Exception("You need to modify sampe configure %s before running butler" % (os.path.join(_home,".butler", "butler.conf"),))
+        
+        config_jobject = _deserialize_jsonobject(os.path.exists(os.path.join(_home,".butler", "butler.conf")))
+        
 
 class PathStackMgr(object):
     def __init__(self):
