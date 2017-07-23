@@ -13,6 +13,8 @@ import copy
 import hashlib
 from requests.auth import HTTPBasicAuth
 from properties.p import Property
+import platform
+from _threading_local import local
 
 def _dash_to_underscore(value):
     return value.replace("-", "_")
@@ -63,6 +65,23 @@ class SimpleRestClient:
 
 class FileManager(object):
     @staticmethod
+    def _create_link(src, dest, type):
+        if(platform.system() == "windows"):
+            import ctypes
+            flags = 1 if src is not None and os.path.isdir(src) else 0
+            if(type == "link"):
+                if not ctypes.windll.kernel32.CreateHardLinkA(dest, src, flags):
+                    raise OSError
+            elif(type == "symlink"):
+                if not ctypes.windll.kernel32.CreateSymbolicLinkA(dest, src, flogs):
+                    raise OSError
+        else:
+            if(type == "link"):
+                os.link(src, dest)
+            elif(type == "symlink"):
+                os.symlink(src, dest)
+
+    @staticmethod
     def saveTextFile(filepath, content):
         try:
             with open(filepath, "w") as f:
@@ -77,6 +96,14 @@ class FileManager(object):
         if(save):
             FileManager.saveTextFile(target_md5sum_file, fchs)
         return fchs
+    
+    @staticmethod
+    def create_symbolic_link(src, dest):
+        _create_link(src, dest, "link")
+    
+    @staticmethod
+    def create_hard_link(src, dest):
+        _create_link(src, dest, "symlink")
 
 class Repo(object):
     def __init__(self, name, commit, abbrev_commit, branch, author):
@@ -728,12 +755,97 @@ def postbuild(args):
     pack_product(builddir, base_prodtag, art_repo)
     upload_artifact_byspec(builddir, art_server_id, "art_upload.spec")
     
-def download_product(art_server_id, art_source_file, product_type):
+def download_product(builddir, art_server_id, art_download_repo, art_source_file, product_type, local_target_dir=None):
     """
-    :param art_server_id: string
-    :param art_source_file: string
+    :param art_server_id: string, in ~/.jfrog/jfrog-cli.conf, mikepro-artifactory
+    :param art_download_repo: string, tfstest-group
+    :param art_source_file: string, ${groupId}/${artifactId}/${version}/${artifactId}-${version}-${classifier}.${packaging}
     :param product_type: string, composite|single
     """
+    ps = PathStackMgr()
+    try:
+        if(not local_target_dir):
+            local_target_dir = "/Users/mike/.butler/data/"
+        ps.pushd(builddir)
+        # The source file path of product's package info file (json) in artifactory started from artifactory download
+        # repo which we think it as the full path, because jfrog cli treat it like this way.
+        #
+        art_full_source_file = art_download_repo + "/" + art_source_file
+        # After downloaded the product's package info file (json) from artifactory, local_full_target_file was calculated
+        # to be its local full path on current runninng operation system which we need to convert the path's seperation.
+        #
+        local_full_target_file = local_target_dir + os.path.sep + art_source_file.replace("/", os.path.sep)
+        # Download the product's package info file(json) from artifactory
+        #
+        download_artifact_byfile(builddir, art_server_id, art_full_source_file, local_target_dir)
+        # Load the product's pacakge info file(json) to generate artifactory download spec file to download real components
+        # included in this package info file.
+        #
+        art_product_jobject = _deserialize_jsonobject(local_full_target_file)
+        # This dictionary will store the real download spec info
+        #
+        art_download_spec = {}
+        art_download_spec["files"] = []
+        # An extended one of the download spec file to record more info in order to create symbolic link of the real
+        # component file from product folder
+        #
+        art_download_spec_ext = {}
+        art_download_spec_ext["files"] = []
+        # Go through the product package info(json) to fill the download spec objects
+        #
+        for repo in art_product_jobject["repos"]:
+            for component in repo["components"]:
+                component_file_name = "{artifactId}-{version}{classifier}.{packaging}".format(artifactId = component["artifactId"],
+                                                                                              version = component["version"],
+                                                                                              classifier = "" if(component["classifier"] == "N/A") else "-" + component["classifier"],
+                                                                                              packaging = component["packaging"])
+                art_component_file = component["groupId"].replace(".", "/") + "/" + component_file_name
+                art_full_component_file =  art_download_repo + "/" + art_component_file
+                local_component_file = art_component_file.replace("/", os.path.sep)
+                local_full_component_file = local_target_dir + os.sep + local_component_file
+                art_download_spec["files"].append({"pattern":art_full_component_file, "target":local_target_dir})
+                art_download_spec_ext["files"].append({"pattern":art_full_component_file, 
+                                                       "target":local_target_dir, 
+                                                       "target_full_component_file":local_full_component_file, 
+                                                       "target_component_file":local_component_file, 
+                                                       "product_component_layout":component["packageLayout"]})
+        
+        # Now let's create the product folder in which we will create all the package layouts and make symbolic links
+        # to each real components, so that we won't keep double component artifacts in local cached folder unless we
+        # call another commands to make the real product package.
+        
+        # If the product folder doens't exist, create it!
+        #        
+        _deserialize_jsonobject("product_download.spec")
+        download_artifact_byspec(builddir, art_server_id, "product_download.spec")
+        local_full_product_dir = local_target_dir + os.path.sep \
+                                + art_product_jobject["storage"]["groupId"].replace(".", os.path.sep) \
+                                + os.path.sep \
+                                + art_product_jobject["storage"]["artifactId"] + os.path.sep + art_product_jobject["storage"]["version"] + os.path.sep \
+                                + "{artifactId}-{version}{classifier}.dir".format(artifactId = art_product_jobject["storage"]["artifactId"],
+                                                                                                version = art_product_jobject["storage"]["version"],
+                                                                                                classifier = "" if(art_product_jobject["storage"]["classifier"] == "N/A") else "-" + art_product_jobject["storage"]["classifier"])
+        if(not os.path.exists(local_full_product_dir)):
+            os.mkdir(local_full_product_dir)
+            for f in art_download_spec_ext["files"]:
+                if(f["product_component_layout"] == "None"):
+                    local_full_product_component_file = local_full_product_dir + os.path.sep \
+                                                        + os.path.basename(f["target_component_file"])
+                else:
+                    local_full_product_component_file = local_full_product_dir + os.path.sep \
+                                                        + f["product_component_layout"].replace(",", os.path.sep) + os.path.sep \
+                                                        + os.path.basename(f["target_component_file"])
+
+                if(not os.path.exists(os.path.dirname(local_full_product_component_file))):
+                    os.mkdir(os.path.dirname(local_full_product_component_file))
+                    
+                FileManager.create_symbolic_link(f["target_full_component_file"], local_full_product_component_file)
+                
+        ps.popd()
+    except Exception as err:
+        print err
+    finally:
+        ps.popd()
 
 def main(argv):
     # python cikit.py
