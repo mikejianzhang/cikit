@@ -99,11 +99,11 @@ class FileManager(object):
     
     @staticmethod
     def create_symbolic_link(src, dest):
-        _create_link(src, dest, "link")
+        FileManager._create_link(src, dest, "symlink")
     
     @staticmethod
     def create_hard_link(src, dest):
-        _create_link(src, dest, "symlink")
+        FileManager._create_link(src, dest, "link")
 
 class Repo(object):
     def __init__(self, name, commit, abbrev_commit, branch, author):
@@ -805,11 +805,15 @@ def download_product(builddir, art_server_id, art_download_repo, art_source_file
             #
             for repo in art_product_jobject["repos"]:
                 for component in repo["components"]:
-                    component_file_name = "{artifactId}-{version}{classifier}.{packaging}".format(artifactId = component["artifactId"],
-                                                                                                  version = component["version"],
-                                                                                                  classifier = "" if(component["classifier"] == "N/A") else "-" + component["classifier"],
-                                                                                                  packaging = component["packaging"])
-                    art_component_file = component["groupId"].replace(".", "/") + "/" + component_file_name
+                    component_file_name = "{artifactId}-{version}{classifier}.{packaging}".format(artifactId = component["storage"]["artifactId"],
+                                                                                                  version = component["storage"]["version"],
+                                                                                                  classifier = "" if(component["storage"]["classifier"] == "N/A") else "-" + component["classifier"],
+                                                                                                  packaging = component["storage"]["packaging"])
+                    art_component_file = component["storage"]["groupId"].replace(".", "/") + "/" \
+                                        + component["storage"]["artifactId"] + "/" \
+                                        + component["storage"]["version"] + "/" \
+                                        + component_file_name
+
                     art_full_component_file =  art_download_repo + "/" + art_component_file
                     local_component_file = art_component_file.replace("/", os.path.sep)
                     local_full_component_file = local_target_dir + os.sep + local_component_file
@@ -826,7 +830,7 @@ def download_product(builddir, art_server_id, art_download_repo, art_source_file
             
             # If the product folder doens't exist, create it!
             #        
-            _deserialize_jsonobject("product_download.spec")
+            _serialize_jsonobject(art_download_spec, "product_download.spec")
             download_artifact_byspec(builddir, art_server_id, "product_download.spec")
             local_full_product_dir = local_target_dir + os.path.sep \
                                     + art_product_jobject["storage"]["groupId"].replace(".", os.path.sep) \
@@ -1001,5 +1005,6 @@ if __name__ == "__main__":
     #upload_artifact_byfile("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "test-repo1-1.0.0_b14.jar", "tfstest-group/com/free/freedivision/test/test-repo1/1.0.0_b14/test-repo1-1.0.0_b14.jar")
     #upload_artifact_byfile("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "test-repo2-1.0.0_b14.jar", "tfstest-group/com/free/freedivision/test/test-repo2/1.0.0_b14/test-repo2-1.0.0_b14.jar")
     #upload_artifact_byfile("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "test-repo3-0.0.1_b66.jar", "tfstest-group/com/free/freedivision/test/test-repo3/0.0.1_b66/test-repo3-0.0.1_b66.jar")
-    download_artifact_byspec("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "art_download.json")
+    #download_artifact_byspec("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "art_download.json")
+    download_product("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "tfstest-group", "com/free/freedivision/test/test/1.0.0_b14/test-1.0.0_b14-full.json", product_type="composite", local_target_dir=None)
     #pass
