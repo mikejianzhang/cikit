@@ -19,21 +19,50 @@ def _dash_to_underscore(value):
     return value.replace("-", "_")
 
 class ButlerConfig(object):
-    _home = os.path.expanduser("~")
+    _home = os.path.expanduser("~") + os.path.sep
+    _butler_data = os.path.join(_home,".butler","data") + os.path.sep
+    _jenkins = {}
     @staticmethod
     def load():
-        if(not os.path.exists(os.path.join(_home,".butler"))):
-            os.mkdir(os.path.join(_home,".butler"))
+        if(not os.path.exists(os.path.join(ButlerConfig._home,".butler"))):
+            os.mkdir(os.path.join(ButlerConfig._home,".butler"))
             
-        if(not os.path.exists(os.path.join(_home,".butler", "butler.conf"))):
+        if(not os.path.exists(os.path.join(ButlerConfig._home,".butler", "butler.conf"))):
             jenkins = []
             jenkins.append({"url":"http(s)://xxxx/jenkins/", "user":"<user>", "password":"<password>",
                             "serverId":"<jenkins-id>", "isDefault":"true"})
             config_template = {"jenkins":jenkins}
-            _serialize_jsonobject(config_template, os.path.join(_home,".butler", "butler.conf"))
-            raise Exception("You need to modify sampe configure %s before running butler" % (os.path.join(_home,".butler", "butler.conf"),))
-        
-        config_jobject = _deserialize_jsonobject(os.path.exists(os.path.join(_home,".butler", "butler.conf")))
+            _serialize_jsonobject(config_template, os.path.join(ButlerConfig._home,".butler", "butler.conf.template"))
+            raise Exception("You need to modify template configure %s and remove .template from file name before running butler" % (os.path.join(ButlerConfig._home,".butler", "butler.conf.template"),))
+
+        config_obj = _deserialize_jsonobject(os.path.join(ButlerConfig._home,".butler", "butler.conf"))
+        for j in config_obj["jenkins"]:
+            server_id = j["serverId"]
+            ButlerConfig._jenkins[server_id] = j
+            if(j["isDefault"] == "true"):
+                ButlerConfig._jenkins["default"] = j
+                
+        if(not os.path.exists(ButlerConfig._butler_data)):
+            os.mkdir(ButlerConfig._butler_data)
+    
+    @staticmethod
+    def home():
+        return ButlerConfig._home
+    
+    @staticmethod
+    def datadir():
+        return ButlerConfig._butler_data
+
+    @staticmethod
+    def jenkins(server_id):
+        j = ButlerConfig._jenkins[server_id]
+        if(not j):
+            raise Exception("Jenkins %s doesn't exist!" % (server_id,))
+        return (j["url"], j["user"], j["password"])
+    
+    @staticmethod
+    def default_jenkins():
+        return ButlerConfig.jenkins("default")
         
 
 class PathStackMgr(object):
@@ -437,6 +466,7 @@ def _serialize_jsonobject(jobject, outfile):
             f.close()
 
 def _deserialize_jsonobject(infile):
+    f = None
     try:
         f = file(infile,'r+');
         s = json.load(f)
@@ -1023,5 +1053,9 @@ if __name__ == "__main__":
     #upload_artifact_byfile("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "test-repo2-1.0.0_b14.jar", "tfstest-group/com/free/freedivision/test/test-repo2/1.0.0_b14/test-repo2-1.0.0_b14.jar")
     #upload_artifact_byfile("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "test-repo3-0.0.1_b66.jar", "tfstest-group/com/free/freedivision/test/test-repo3/0.0.1_b66/test-repo3-0.0.1_b66.jar")
     #download_artifact_byspec("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "art_download.json")
-    download_product("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "tfstest-group", "com/free/freedivision/test/test/1.0.0_b14/test-1.0.0_b14-full.json", product_type="composite", local_target_dir=None)
+    #download_product("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "tfstest-group", "com/free/freedivision/test/test/1.0.0_b14/test-1.0.0_b14-full.json", product_type="composite", local_target_dir=None)
+    ButlerConfig.load()
+    print ButlerConfig.home()
+    print ButlerConfig.datadir()
+    print ButlerConfig.default_jenkins()
     #pass
