@@ -853,7 +853,7 @@ def download_product(builddir, art_server_id, art_download_repo, art_source_file
                     if(not os.path.exists(os.path.dirname(local_full_product_component_file))):
                         os.mkdir(os.path.dirname(local_full_product_component_file))
                         
-                    FileManager.create_symbolic_link(f["target_full_component_file"], local_full_product_component_file)
+                    FileManager.create_hard_link(f["target_full_component_file"], local_full_product_component_file)
                 
         ps.popd()
     except Exception as err:
