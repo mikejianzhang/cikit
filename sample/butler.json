@@ -1,0 +1,27 @@
+{
+    "jenkins": [
+        {
+            "url": "http(s)://xxxx/jenkins/",
+            "user": "<user>",
+            "password": "<password>",
+            "serverId": "<jenkins-id>",
+            "isDefault": "true"
+        }
+    ],
+    "artifactory": [
+        {
+            "url": "http://192.168.0.105:8888/artifactory/",
+            "apiKey": "AKCp5Z2Nd57LoAPtmqnQd2ScqZtSF8z8CoM2eEB34jYX2XisQpG29pAvFWR9qqisLRpkcvBQh",
+            "serverId": "mikepro-artifactory",
+            "isDefault": "true"
+        }
+    ],
+    "redis": [
+        {
+            "host": "mikepro.local",
+            "port": "7777",
+            "serverId": "mikepro-redis",
+            "isDefault": "true"
+        }
+    ]
+}
