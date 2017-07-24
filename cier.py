@@ -22,16 +22,34 @@ class ButlerConfig(object):
     _home = os.path.expanduser("~") + os.path.sep
     _butler_data = os.path.join(_home,".butler","data") + os.path.sep
     _jenkins = {}
+    _arts = {}
+    _redis = {}
     @staticmethod
     def load():
         if(not os.path.exists(os.path.join(ButlerConfig._home,".butler"))):
             os.mkdir(os.path.join(ButlerConfig._home,".butler"))
             
         if(not os.path.exists(os.path.join(ButlerConfig._home,".butler", "butler.conf"))):
+            config_template = {}
             jenkins = []
-            jenkins.append({"url":"http(s)://xxxx/jenkins/", "user":"<user>", "password":"<password>",
+            jenkins.append({"url":"http(s)://xxxx:8080/jenkins/", "user":"<user>", "password":"<password>",
                             "serverId":"<jenkins-id>", "isDefault":"true"})
-            config_template = {"jenkins":jenkins}
+            config_template["jenkins"] = jenkins
+            
+            arts = []
+            arts.append({"url": "http(s)://xxxx:8080/artifactory/",
+                         "apiKey": "<key>",
+                         "serverId": "mikepro-artifactory",
+                         "isDefault": "true"})
+            config_template["artifactory"] = arts
+            
+            redis = []
+            redis.append({"host": "mikepro.local",
+                          "port": "6379",
+                          "serverId": "mikepro-redis",
+                          "isDefault": "true"})
+            config_template["redis"] = redis
+            
             _serialize_jsonobject(config_template, os.path.join(ButlerConfig._home,".butler", "butler.conf.template"))
             raise Exception("You need to modify template configure %s and remove .template from file name before running butler" % (os.path.join(ButlerConfig._home,".butler", "butler.conf.template"),))
 
@@ -41,6 +59,18 @@ class ButlerConfig(object):
             ButlerConfig._jenkins[server_id] = j
             if(j["isDefault"] == "true"):
                 ButlerConfig._jenkins["default"] = j
+                
+        for art in config_obj["artifactory"]:
+            server_id = art["serverId"]
+            ButlerConfig._arts[server_id] = art
+            if(art["isDefault"] == "true"):
+                ButlerConfig._arts["default"] = art
+                
+        for r in config_obj["redis"]:
+            server_id = r["serverId"]
+            ButlerConfig._redis[server_id] = r
+            if(r["isDefault"] == "true"):
+                ButlerConfig._redis["default"] = r
                 
         if(not os.path.exists(ButlerConfig._butler_data)):
             os.mkdir(ButlerConfig._butler_data)
