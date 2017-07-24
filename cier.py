@@ -776,7 +776,7 @@ def pack_product(builddir, base_prodtag, art_repo):
     finally:
         ps.popd()
 
-def prebuild(args):
+def pre_build_multi_repo(args):
     lforcebuilds = None
     if(args["forcebuilds"] and args["forcebuilds"] != "none"):
         if(args["forcebuilds"] == "all"):
@@ -792,7 +792,7 @@ def prebuild(args):
     props = get_buildinfo(prodname, prodversion, builddir, buildurl, lforcebuilds)
     tag_current_build(buildurl, props)
 
-def postbuild(args):
+def post_build_composite_product(args):
     builddir = "/Users/mike/Documents/MikeWorkspace/cikit/test"
     base_prodtag = "product_test_0.0.1_b66"
     art_server_id = "mikepro-artifactory"
@@ -800,7 +800,7 @@ def postbuild(args):
     pack_product(builddir, base_prodtag, art_repo)
     upload_artifact_byspec(builddir, art_server_id, "art_upload.spec")
     
-def download_product(builddir, art_server_id, art_download_repo, art_source_file, product_type="composite", local_target_dir=None):
+def download_composite_product(builddir, art_server_id, art_download_repo, art_source_file, product_type="composite", local_target_dir=None):
     """
     :param art_server_id: string, in ~/.jfrog/jfrog-cli.conf, mikepro-artifactory
     :param art_download_repo: string, tfstest-group
@@ -908,56 +908,68 @@ def download_product(builddir, art_server_id, art_download_repo, art_source_file
         ps.popd()
 
 def main(argv):
-    # python cikit.py
+    # python butler.py
     #
     ButlerConfig.load()
-    parser = argparse.ArgumentParser(prog='cier', 
-                                     description="cier to assist CI/CD construction")
-
-    subparsers = parser.add_subparsers(help='commands')
-    
-    # python cier.py <prebuild|postbuild>
+    parser = argparse.ArgumentParser(prog='butler', 
+                                     description="butler to assist CI/CD construction")
+    subparsers = parser.add_subparsers(dest = 'command')
+    # Add sub-commands: ci|cd
     #
-    parent_parser = argparse.ArgumentParser(add_help=False)
-    parent_parser.add_argument('--prodname', action='store', 
-                              dest='prodname',
-                              required=True, 
-                              help='Store the product')
-
-    parent_parser.add_argument('--prodversion', action='store', 
-                              dest='prodversion',
-                              required=True,
-                              help='Store the version of current building product or component')
-
-    parent_parser.add_argument('--builddir', action='store', 
-                              dest='builddir',
-                              required=True, 
-                              help='Store the local work directory of current build')
+    parsers_ci = subparsers.add_parser('ci', help='commands to support ci setup')
+    parsers_cd = subparsers.add_parser('cd', help='commands to support cd setup')
     
-    parent_parser.add_argument('--buildurl', action='store', 
-                              dest='buildurl',
-                              required=True,
-                              help='Store current jenkins build url')
+    parent_parser_ci = argparse.ArgumentParser(add_help=False)
+    parent_parser_ci.add_argument('--prodname', action='store', 
+                                    dest='prodname',
+                                    required=True, 
+                                    help='Store the product')
 
-    parent_parser.add_argument('--buildname', action='store', 
-                              dest='buildname',
-                              help='Store current build name')
+    parent_parser_ci.add_argument('--prodversion', action='store', 
+                                    dest='prodversion',
+                                    required=True,
+                                    help='Store the version of current building product or component')
 
+    parent_parser_ci.add_argument('--builddir', action='store',
+                                    dest='builddir',
+                                    required=True, 
+                                    help='Store the local work directory of current build')
     
-    parent_parser.add_argument('--forcebuilds', action='store', 
-                              dest='forcebuilds',
-                              help='Store the manually kicked off builds')
+    parent_parser_ci.add_argument('--buildurl', action='store', 
+                                    dest='buildurl',
+                                    required=True,
+                                    help='Store current jenkins build url')
 
-    parser_prebuild = subparsers.add_parser('prebuild', 
-                                            help='Build supported toolkits for pre-build stage', 
-                                            parents=[parent_parser])
+    parent_parser_ci.add_argument('--forcebuilds', action='store', 
+                                    dest='forcebuilds',
+                                    help='Store the manually kicked off builds')
 
-    parser_prebuild.set_defaults(func=prebuild)
+    # Add sub-commands: pre_build_multi_repo|post_build_composite_product
+    #
+    subparsers_ci = parsers_ci.add_subparsers(dest = 'sub_command')
+    parser_prebuild_multi_repo = subparsers_ci.add_parser('pre_build_multi_repo', 
+                                                        help='Support multiple repositories at pre-build stage', 
+                                                        parents=[parent_parser_ci])
+    parser_prebuild_multi_repo.set_defaults(func=pre_build_multi_repo)
 
-    parser_postbuild = subparsers.add_parser('postbuild',
-                                            help='Build supported toolkits for post-build stage',
-                                            parents=[parent_parser])
-    parser_postbuild.set_defaults(func=postbuild)
+    parser_postbuild_composite_product = subparsers_ci.add_parser('post_build_composite_product',
+                                                                help='Support composite product at post-build stage',
+                                                                parents=[parent_parser_ci])
+    parser_postbuild_composite_product.add_argument('--prereleasedtag', action='store', 
+                                                    dest='prereleasedtag',
+                                                    help='Store pre released version')
+    parser_postbuild_composite_product.set_defaults(func=post_build_composite_product)
+    
+    # Add sub-commands: download_composite_product|post_build_composite_product
+    #
+    subparsers_cd = parsers_cd.add_subparsers(dest = 'sub_command')
+    parser_download_composite_product = subparsers_cd.add_parser('download_composite_product',
+                                            help='Download products')
+    parser_download_composite_product.add_argument('--workdir', action='store', 
+                                                   dest='workdir',
+                                                   required=True, 
+                                                   help='Store the command running directory')
+    parser_download_composite_product.set_defaults(func=download_composite_product)
     
     args = parser.parse_args(argv[1:])
     dictargs = vars(args)
@@ -1032,7 +1044,7 @@ def _test_package(art_server_id, art_upload_repo):
         ps.popd()
 
 if __name__ == "__main__":
-    #main(sys.argv)
+    main(sys.argv)
     #print _dash_to_underscore("test-repo1-yes")
     #build = _get_repos_buildneeded("http://localhost:8080/jenkins/job/copd-multi/11/changes", forcebuilds="all")
     #for x in build:
@@ -1053,7 +1065,7 @@ if __name__ == "__main__":
     #upload_artifact_byfile("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "test-repo2-1.0.0_b14.jar", "tfstest-group/com/free/freedivision/test/test-repo2/1.0.0_b14/test-repo2-1.0.0_b14.jar")
     #upload_artifact_byfile("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "test-repo3-0.0.1_b66.jar", "tfstest-group/com/free/freedivision/test/test-repo3/0.0.1_b66/test-repo3-0.0.1_b66.jar")
     #download_artifact_byspec("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "art_download.json")
-    download_product("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "tfstest-group", "com/free/freedivision/test/test/1.0.0_b14/test-1.0.0_b14-full.json", product_type="composite", local_target_dir=None)
+    #download_product("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "tfstest-group", "com/free/freedivision/test/test/1.0.0_b14/test-1.0.0_b14-full.json", product_type="composite", local_target_dir=None)
     #ButlerConfig.load()
     #print ButlerConfig.home()
     #print ButlerConfig.datadir()
