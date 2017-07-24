@@ -206,8 +206,7 @@ def _get_changed_repos(buildurl):
     if(m):
         joburl = m.group(1)
         
-    juname = os.getenv("jenkins_user")
-    jpassword = os.getenv("jenkins_user_password")
+    (jurl, juname, jpassword) = ButlerConfig.default_jenkins()
         
     jdata = SimpleRestClient.getJSONContent("%sapi/json?pretty=true" % joburl, juname, jpassword)
     lastSuccessfulBuildNumber = jdata["lastSuccessfulBuild"]["number"]
@@ -230,8 +229,7 @@ def _get_changed_repos_of_build(buildurl):
     '''
     changedRepos = []
     buildchangeurl = "%schanges" % buildurl
-    juname = os.getenv("jenkins_user")
-    jpassword = os.getenv("jenkins_user_password")
+    (jurl, juname, jpassword) = ButlerConfig.default_jenkins()
     data = SimpleRestClient.getStringContent(buildchangeurl, juname, jpassword)
     pattern=r"Project:\s((?!\.repo).*)<br.*>"
     changesre = re.compile(pattern)
@@ -813,7 +811,8 @@ def download_product(builddir, art_server_id, art_download_repo, art_source_file
     ps = PathStackMgr()
     try:
         if(not local_target_dir):
-            local_target_dir = "/Users/mike/.butler/data/"
+            local_target_dir = ButlerConfig.datadir()
+
         ps.pushd(builddir)
         
         # No matter it is single or composite product, we need to download it firstly!
@@ -911,6 +910,7 @@ def download_product(builddir, art_server_id, art_download_repo, art_source_file
 def main(argv):
     # python cikit.py
     #
+    ButlerConfig.load()
     parser = argparse.ArgumentParser(prog='cier', 
                                      description="cier to assist CI/CD construction")
 
@@ -1053,9 +1053,9 @@ if __name__ == "__main__":
     #upload_artifact_byfile("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "test-repo2-1.0.0_b14.jar", "tfstest-group/com/free/freedivision/test/test-repo2/1.0.0_b14/test-repo2-1.0.0_b14.jar")
     #upload_artifact_byfile("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "test-repo3-0.0.1_b66.jar", "tfstest-group/com/free/freedivision/test/test-repo3/0.0.1_b66/test-repo3-0.0.1_b66.jar")
     #download_artifact_byspec("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "art_download.json")
-    #download_product("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "tfstest-group", "com/free/freedivision/test/test/1.0.0_b14/test-1.0.0_b14-full.json", product_type="composite", local_target_dir=None)
-    ButlerConfig.load()
-    print ButlerConfig.home()
-    print ButlerConfig.datadir()
-    print ButlerConfig.default_jenkins()
+    download_product("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "tfstest-group", "com/free/freedivision/test/test/1.0.0_b14/test-1.0.0_b14-full.json", product_type="composite", local_target_dir=None)
+    #ButlerConfig.load()
+    #print ButlerConfig.home()
+    #print ButlerConfig.datadir()
+    #print ButlerConfig.default_jenkins()
     #pass
