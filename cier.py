@@ -24,6 +24,9 @@ class ButlerConfig(object):
     _jenkins = {}
     _arts = {}
     _redis = {}
+    _all_jenkins = None
+    _all_arts = None
+    _all_redis = None
     @staticmethod
     def load():
         if(not os.path.exists(os.path.join(ButlerConfig._home,".butler"))):
@@ -54,6 +57,10 @@ class ButlerConfig(object):
             raise Exception("You need to modify template configure %s and remove .template from file name before running butler" % (os.path.join(ButlerConfig._home,".butler", "butler.conf.template"),))
 
         config_obj = _deserialize_jsonobject(os.path.join(ButlerConfig._home,".butler", "butler.conf"))
+        ButlerConfig._all_jenkins = config_obj["jenkins"]
+        ButlerConfig._all_arts = config_obj["artifactory"]
+        ButlerConfig._all_redis = config_obj["redis"]
+
         for j in config_obj["jenkins"]:
             server_id = j["serverId"]
             ButlerConfig._jenkins[server_id] = j
@@ -93,6 +100,40 @@ class ButlerConfig(object):
     @staticmethod
     def default_jenkins():
         return ButlerConfig.jenkins("default")
+    
+    @staticmethod
+    def all_jenkins():
+        return ButlerConfig._all_jenkins
+    
+    @staticmethod
+    def artifactory(server_id):
+        art = ButlerConfig._arts[server_id]
+        if(not art):
+            raise Exception("Artifactory %s doesn't exist!" % (server_id,))
+        return (art["url"], art["apiKey"], art["serverId"])
+    
+    @staticmethod
+    def default_artifactory():
+        return ButlerConfig.artifactory("default")
+    
+    @staticmethod
+    def all_artifactories():
+        return ButlerConfig._all_arts
+    
+    @staticmethod
+    def redis(server_id):
+        r = ButlerConfig._redis[server_id]
+        if(not r):
+            raise Exception("Redis %s doesn't exist!" % (server_id,))
+        return (r["host"], r["port"], r["serverId"])
+    
+    @staticmethod
+    def default_redis():
+        return ButlerConfig.redis("default")
+    
+    @staticmethod
+    def all_redis():
+        return ButlerConfig._all_redis
         
 
 class PathStackMgr(object):
