@@ -50,6 +50,8 @@ class ButlerConfig(object):
             redis.append({"host": "mikepro.local",
                           "port": "6379",
                           "serverId": "mikepro-redis",
+                          "downloadRepo":"<downloadrepo>",
+                          "uploadRepo":"<uploadrepo",
                           "isDefault": "true"})
             config_template["redis"] = redis
             
@@ -110,7 +112,7 @@ class ButlerConfig(object):
         art = ButlerConfig._arts[server_id]
         if(not art):
             raise Exception("Artifactory %s doesn't exist!" % (server_id,))
-        return (art["url"], art["apiKey"], art["serverId"])
+        return (art["url"], art["apiKey"], art["serverId"], art["downloadRepo"], art["uploadRepo"])
     
     @staticmethod
     def default_artifactory():
