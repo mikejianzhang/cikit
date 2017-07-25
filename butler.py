@@ -784,7 +784,7 @@ def download_artifact_byfile(builddir, art_server_id, art_source_file, local_tar
     finally:
         ps.popd()
 
-def pack_product(builddir, base_prodtag, art_repo):
+def pack_composite_product(builddir, base_prodtag):
     ps = PathStackMgr()
     try:
         current_buildprops = _load_buildproperties(builddir + os.sep + "build-info.properties")
@@ -804,45 +804,67 @@ def pack_product(builddir, base_prodtag, art_repo):
                                                full_packageinfo["storage"]["version"],
                                                full_packageinfo["storage"]["classifier"],
                                                full_packageinfo["storage"]["packaging"])
-        full_packageinfo_grouppath = full_packageinfo["storage"]["groupId"].replace(".", "/")
-        full_packageinfo_artpath = "%s/%s/%s/%s/%s" % (art_repo, 
-                                                       full_packageinfo_grouppath, 
-                                                       full_packageinfo["storage"]["artifactId"],
-                                                       full_packageinfo["storage"]["version"],
-                                                       full_packageinfo_fn)
-        spec_f1 = {"pattern":full_packageinfo_fn, "target":full_packageinfo_artpath}
+
 
         increment_packageinfo_fn = "%s-%s-%s.%s" % (increment_packageinfo["storage"]["artifactId"],
                                                     increment_packageinfo["storage"]["version"],
                                                     increment_packageinfo["storage"]["classifier"],
                                                     increment_packageinfo["storage"]["packaging"])
-        increment_packageinfo_grouppath = increment_packageinfo["storage"]["groupId"].replace(".", "/")
-        increment_packageinfo_artpath = "%s/%s/%s/%s/%s" % (art_repo, 
-                                                       increment_packageinfo_grouppath, 
-                                                       increment_packageinfo["storage"]["artifactId"],
-                                                       increment_packageinfo["storage"]["version"],
-                                                       increment_packageinfo_fn)
-        spec_f2 = {"pattern":increment_packageinfo_fn, "target":increment_packageinfo_artpath}
+
 
         patch_packageinfo_fn = "%s-%s-%s.%s" % (patch_packageinfo["storage"]["artifactId"],
                                                patch_packageinfo["storage"]["version"],
                                                patch_packageinfo["storage"]["classifier"],
                                                patch_packageinfo["storage"]["packaging"])
-        patch_packageinfo_grouppath = increment_packageinfo["storage"]["groupId"].replace(".", "/")
-        patch_packageinfo_artpath = "%s/%s/%s/%s/%s" % (art_repo, 
-                                                       patch_packageinfo_grouppath, 
-                                                       patch_packageinfo["storage"]["artifactId"],
-                                                       patch_packageinfo["storage"]["version"],
-                                                       patch_packageinfo_fn)
-        spec_f3 = {"pattern":patch_packageinfo_fn, "target":patch_packageinfo_artpath}
-        
-        art_upload_filespec = {"files":[spec_f1, spec_f2, spec_f3]}
 
         ps.pushd(builddir)
         _serialize_jsonobject(full_packageinfo, full_packageinfo_fn)
         _serialize_jsonobject(increment_packageinfo, increment_packageinfo_fn)
         _serialize_jsonobject(patch_packageinfo, patch_packageinfo_fn)
+        ps.popd()
+        return (full_packageinfo_fn, increment_packageinfo_fn, patch_packageinfo_fn)
+    except Exception as err:
+        print err
+    finally:
+        ps.popd()
+        
+def upload_composite_product(builddir, full_packageinfo_fn, increment_packageinfo_fn, patch_packageinfo_fn):
+    ps = PathStackMgr()
+    try:
+        ps.pushd(builddir)
+
+        (repourl, key, art_server_id, art_download_repo, art_upload_repo) = ButlerConfig.default_artifactory()
+        full_packageinfo = _deserialize_jsonobject(full_packageinfo_fn)
+        increment_packageinfo = _deserialize_jsonobject(increment_packageinfo_fn)
+        patch_packageinfo = _deserialize_jsonobject(patch_packageinfo_fn)
+
+        full_packageinfo_grouppath = full_packageinfo["storage"]["groupId"].replace(".", "/")
+        full_packageinfo_artpath = "%s/%s/%s/%s/%s" % (art_upload_repo, 
+                                                       full_packageinfo_grouppath, 
+                                                       full_packageinfo["storage"]["artifactId"],
+                                                       full_packageinfo["storage"]["version"],
+                                                       full_packageinfo_fn)
+        spec_f1 = {"pattern":full_packageinfo_fn, "target":full_packageinfo_artpath}
+        
+        increment_packageinfo_grouppath = increment_packageinfo["storage"]["groupId"].replace(".", "/")
+        increment_packageinfo_artpath = "%s/%s/%s/%s/%s" % (art_upload_repo, 
+                                                       increment_packageinfo_grouppath, 
+                                                       increment_packageinfo["storage"]["artifactId"],
+                                                       increment_packageinfo["storage"]["version"],
+                                                       increment_packageinfo_fn)
+        spec_f2 = {"pattern":increment_packageinfo_fn, "target":increment_packageinfo_artpath}
+        
+        patch_packageinfo_grouppath = increment_packageinfo["storage"]["groupId"].replace(".", "/")
+        patch_packageinfo_artpath = "%s/%s/%s/%s/%s" % (art_upload_repo, 
+                                                       patch_packageinfo_grouppath, 
+                                                       patch_packageinfo["storage"]["artifactId"],
+                                                       patch_packageinfo["storage"]["version"],
+                                                       patch_packageinfo_fn)
+        spec_f3 = {"pattern":patch_packageinfo_fn, "target":patch_packageinfo_artpath}
+        art_upload_filespec = {"files":[spec_f1, spec_f2, spec_f3]}
         _serialize_jsonobject(art_upload_filespec, "art_upload.spec")
+        upload_artifact_byspec(builddir, art_server_id, "art_upload.spec")
+
         ps.popd()
     except Exception as err:
         print err
@@ -863,33 +885,31 @@ def pre_build_multi_repo(args):
     buildurl = args["buildurl"]
     
     props = get_buildinfo(prodname, prodversion, builddir, buildurl, lforcebuilds)
-    tag_current_build(buildurl, props)
+    tag_current_build(builddir, props)
 
 def post_build_composite_product(args):
-    builddir = "/Users/mike/Documents/MikeWorkspace/cikit/test"
-    base_prodtag = "product_test_0.0.1_b66"
-    art_server_id = "mikepro-artifactory"
-    art_repo = "tfstest-group"
-    pack_product(builddir, base_prodtag, art_repo)
-    upload_artifact_byspec(builddir, art_server_id, "art_upload.spec")
+    builddir = args["builddir"]
+    base_prodtag = args["prereleasedtag"]
+    (full_packageinfo_fn, increment_packageinfo_fn, patch_packageinfo_fn) = pack_composite_product(builddir, base_prodtag)
+    upload_composite_product(builddir, full_packageinfo_fn, increment_packageinfo_fn, patch_packageinfo_fn)
+
     
-def download_composite_product(builddir, art_server_id, art_download_repo, art_source_file, product_type="composite", local_target_dir=None):
+def download_composite_product(builddir, art_source_file, local_target_dir=None):
     """
-    :param art_server_id: string, in ~/.jfrog/jfrog-cli.conf, mikepro-artifactory
-    :param art_download_repo: string, tfstest-group
+    :param builddir: string, build directory
     :param art_source_file: string, ${groupId}/${artifactId}/${version}/${artifactId}-${version}-${classifier}.${packaging}
-    :param product_type: string, composite|single
+    :param local_target_dir: string, the directory path should have "/" at end.
     """
     assert product_type in ["single", "composite"], "product_type supports 'single' and 'composite' now"
     ps = PathStackMgr()
     try:
         if(not local_target_dir):
             local_target_dir = ButlerConfig.datadir()
+        
+        (repourl, key, art_server_id, art_download_repo, art_upload_repo) = ButlerConfig.default_artifactory()
 
         ps.pushd(builddir)
-        
         # No matter it is single or composite product, we need to download it firstly!
-        
         # The source file path of product artifact or the in artifactory started from artifactory download
         # repo which we think it as the full path, because jfrog cli treat it like this way.
         #
@@ -901,78 +921,77 @@ def download_composite_product(builddir, art_server_id, art_download_repo, art_s
         
         # Well it is a composite product, the downloaded artifact above is just the product's package info file(json)
         #
-        if(product_type == "composite"):
-            # After downloaded the product's package info file (json) from artifactory, local_full_target_file was calculated
-            # to be its local full path on current runninng operation system which we need to convert the path's seperation.
-            #
-            local_full_target_file = local_target_dir + os.path.sep + art_source_file.replace("/", os.path.sep)
+        # After downloaded the product's package info file (json) from artifactory, local_full_target_file was calculated
+        # to be its local full path on current runninng operation system which we need to convert the path's seperation.
+        #
+        local_full_target_file = local_target_dir + os.path.sep + art_source_file.replace("/", os.path.sep)
 
-            # Load the product's pacakge info file(json) to generate artifactory download spec file to download real components
-            # included in this package info file.
-            #
-            art_product_jobject = _deserialize_jsonobject(local_full_target_file)
-            # This dictionary will store the real download spec info
-            #
-            art_download_spec = {}
-            art_download_spec["files"] = []
-            # An extended one of the download spec file to record more info in order to create symbolic link of the real
-            # component file from product folder
-            #
-            art_download_spec_ext = {}
-            art_download_spec_ext["files"] = []
-            # Go through the product package info(json) to fill the download spec objects
-            #
-            for repo in art_product_jobject["repos"]:
-                for component in repo["components"]:
-                    component_file_name = "{artifactId}-{version}{classifier}.{packaging}".format(artifactId = component["storage"]["artifactId"],
-                                                                                                  version = component["storage"]["version"],
-                                                                                                  classifier = "" if(component["storage"]["classifier"] == "N/A") else "-" + component["classifier"],
-                                                                                                  packaging = component["storage"]["packaging"])
-                    art_component_file = component["storage"]["groupId"].replace(".", "/") + "/" \
-                                        + component["storage"]["artifactId"] + "/" \
-                                        + component["storage"]["version"] + "/" \
-                                        + component_file_name
+        # Load the product's pacakge info file(json) to generate artifactory download spec file to download real components
+        # included in this package info file.
+        #
+        art_product_jobject = _deserialize_jsonobject(local_full_target_file)
+        # This dictionary will store the real download spec info
+        #
+        art_download_spec = {}
+        art_download_spec["files"] = []
+        # An extended one of the download spec file to record more info in order to create symbolic link of the real
+        # component file from product folder
+        #
+        art_download_spec_ext = {}
+        art_download_spec_ext["files"] = []
+        # Go through the product package info(json) to fill the download spec objects
+        #
+        for repo in art_product_jobject["repos"]:
+            for component in repo["components"]:
+                component_file_name = "{artifactId}-{version}{classifier}.{packaging}".format(artifactId = component["storage"]["artifactId"],
+                                                                                              version = component["storage"]["version"],
+                                                                                              classifier = "" if(component["storage"]["classifier"] == "N/A") else "-" + component["classifier"],
+                                                                                              packaging = component["storage"]["packaging"])
+                art_component_file = component["storage"]["groupId"].replace(".", "/") + "/" \
+                                    + component["storage"]["artifactId"] + "/" \
+                                    + component["storage"]["version"] + "/" \
+                                    + component_file_name
 
-                    art_full_component_file =  art_download_repo + "/" + art_component_file
-                    local_component_file = art_component_file.replace("/", os.path.sep)
-                    local_full_component_file = local_target_dir + os.sep + local_component_file
-                    art_download_spec["files"].append({"pattern":art_full_component_file, "target":local_target_dir})
-                    art_download_spec_ext["files"].append({"pattern":art_full_component_file, 
-                                                           "target":local_target_dir, 
-                                                           "target_full_component_file":local_full_component_file, 
-                                                           "target_component_file":local_component_file, 
-                                                           "product_component_layout":component["packageLayout"]})
-            
-            # Now let's create the product folder in which we will create all the package layouts and make symbolic links
-            # to each real components, so that we won't keep double component artifacts in local cached folder unless we
-            # call another commands to make the real product package.
-            
-            # If the product folder doens't exist, create it!
-            #        
-            _serialize_jsonobject(art_download_spec, "product_download.spec")
-            download_artifact_byspec(builddir, art_server_id, "product_download.spec")
-            local_full_product_dir = local_target_dir + os.path.sep \
-                                    + art_product_jobject["storage"]["groupId"].replace(".", os.path.sep) \
-                                    + os.path.sep \
-                                    + art_product_jobject["storage"]["artifactId"] + os.path.sep + art_product_jobject["storage"]["version"] + os.path.sep \
-                                    + "{artifactId}-{version}{classifier}.dir".format(artifactId = art_product_jobject["storage"]["artifactId"],
-                                                                                                    version = art_product_jobject["storage"]["version"],
-                                                                                                    classifier = "" if(art_product_jobject["storage"]["classifier"] == "N/A") else "-" + art_product_jobject["storage"]["classifier"])
-            if(not os.path.exists(local_full_product_dir)):
-                os.mkdir(local_full_product_dir)
-                for f in art_download_spec_ext["files"]:
-                    if(f["product_component_layout"] == "None"):
-                        local_full_product_component_file = local_full_product_dir + os.path.sep \
-                                                            + os.path.basename(f["target_component_file"])
-                    else:
-                        local_full_product_component_file = local_full_product_dir + os.path.sep \
-                                                            + f["product_component_layout"].replace(",", os.path.sep) + os.path.sep \
-                                                            + os.path.basename(f["target_component_file"])
-    
-                    if(not os.path.exists(os.path.dirname(local_full_product_component_file))):
-                        os.mkdir(os.path.dirname(local_full_product_component_file))
-                        
-                    FileManager.create_hard_link(f["target_full_component_file"], local_full_product_component_file)
+                art_full_component_file =  art_download_repo + "/" + art_component_file
+                local_component_file = art_component_file.replace("/", os.path.sep)
+                local_full_component_file = local_target_dir + os.sep + local_component_file
+                art_download_spec["files"].append({"pattern":art_full_component_file, "target":local_target_dir})
+                art_download_spec_ext["files"].append({"pattern":art_full_component_file, 
+                                                       "target":local_target_dir, 
+                                                       "target_full_component_file":local_full_component_file, 
+                                                       "target_component_file":local_component_file, 
+                                                       "product_component_layout":component["packageLayout"]})
+        
+        # Now let's create the product folder in which we will create all the package layouts and make symbolic links
+        # to each real components, so that we won't keep double component artifacts in local cached folder unless we
+        # call another commands to make the real product package.
+        
+        # If the product folder doens't exist, create it!
+        #        
+        _serialize_jsonobject(art_download_spec, "product_download.spec")
+        download_artifact_byspec(builddir, art_server_id, "product_download.spec")
+        local_full_product_dir = local_target_dir + os.path.sep \
+                                + art_product_jobject["storage"]["groupId"].replace(".", os.path.sep) \
+                                + os.path.sep \
+                                + art_product_jobject["storage"]["artifactId"] + os.path.sep + art_product_jobject["storage"]["version"] + os.path.sep \
+                                + "{artifactId}-{version}{classifier}.dir".format(artifactId = art_product_jobject["storage"]["artifactId"],
+                                                                                                version = art_product_jobject["storage"]["version"],
+                                                                                                classifier = "" if(art_product_jobject["storage"]["classifier"] == "N/A") else "-" + art_product_jobject["storage"]["classifier"])
+        if(not os.path.exists(local_full_product_dir)):
+            os.mkdir(local_full_product_dir)
+            for f in art_download_spec_ext["files"]:
+                if(f["product_component_layout"] == "None"):
+                    local_full_product_component_file = local_full_product_dir + os.path.sep \
+                                                        + os.path.basename(f["target_component_file"])
+                else:
+                    local_full_product_component_file = local_full_product_dir + os.path.sep \
+                                                        + f["product_component_layout"].replace(",", os.path.sep) + os.path.sep \
+                                                        + os.path.basename(f["target_component_file"])
+
+                if(not os.path.exists(os.path.dirname(local_full_product_component_file))):
+                    os.mkdir(os.path.dirname(local_full_product_component_file))
+                    
+                FileManager.create_hard_link(f["target_full_component_file"], local_full_product_component_file)
                 
         ps.popd()
     except Exception as err:
@@ -1026,8 +1045,12 @@ def main(argv):
     parser_prebuild_multi_repo.set_defaults(func=pre_build_multi_repo)
 
     parser_postbuild_composite_product = subparsers_ci.add_parser('post_build_composite_product',
-                                                                help='Support composite product at post-build stage',
-                                                                parents=[parent_parser_ci])
+                                                                help='Support composite product at post-build stage')
+    parser_postbuild_composite_product.add_argument('--builddir',
+                                                    action='store',
+                                                    dest='builddir',
+                                                    required=True, 
+                                                    help='Store the local work directory of current build')
     parser_postbuild_composite_product.add_argument('--prereleasedtag', action='store', 
                                                     dest='prereleasedtag',
                                                     help='Store pre released version')
