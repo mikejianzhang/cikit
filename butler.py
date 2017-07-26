@@ -867,7 +867,7 @@ def upload_composite_product(builddir, full_packageinfo_fn, increment_packageinf
 
         ps.popd()
     except Exception as err:
-        print err
+        raise
     finally:
         ps.popd()
 
