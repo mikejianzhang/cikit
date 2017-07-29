@@ -225,13 +225,14 @@ class FileManager(object):
         FileManager._create_link(src, dest, "link")
 
 class Repo(object):
-    def __init__(self, name, commit, abbrev_commit, branch, author):
+    def __init__(self, name, commit, abbrev_commit, branch, author, pre_version):
         self._name = name
         self._commit = commit
         self._abbrevcommit = abbrev_commit
         self._author = author
         self._branch = branch
         self._buildneeded = False
+        self._pre_version = pre_version
     
     def __str__(self):
         return "%s_commit=%s\n%s_branch=%s\n%s_buildneeded=%s" % (_dash_to_underscore(self._name), self._commit, _dash_to_underscore(self._name), self._branch, _dash_to_underscore(self._name), self._buildneeded)
@@ -255,6 +256,10 @@ class Repo(object):
     @property    
     def branch(self):
         return self._branch
+    
+    @property 
+    def preversion(self):
+        return self._pre_version
     
     @property
     def buildneeded(self):
@@ -380,11 +385,21 @@ def _gen_prop_file(props, builddir, ofile='build-info.properties'):
         raise Exception(message)
     
     
-def _get_local_builddir_info(builddir, buildurl, forcebuilds=None):
+def _get_local_builddir_info(builddir, buildurl, manifest_branch, forcebuilds=None):
     ps = PathStackMgr()
     output = ""
     repolist = []
     try:
+        ps.pushd(builddir + os.sep + ".repo" + os.sep + "manifests")
+        cmd = "git --no-pager show %s:%s" % (manifest_branch, "package.json")
+        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+        pre_packageinfo_s = _deserialize_jsonobject_fromstring(output)
+        repo_info = {}
+        for r in pre_packageinfo_s["repos"]:
+            rname = r["repoName"]
+            repo_info[rname] = r["version"]
+        ps.popd()
+
         cmd = "repo manifest -r"
         ps.pushd(builddir)
         output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
@@ -400,7 +415,8 @@ def _get_local_builddir_info(builddir, buildurl, forcebuilds=None):
             if(output):
                 output = output.strip()
                 loutput = output.split('_')
-                repolist.append(Repo(project.attrib['name'], project.attrib['revision'], loutput[0], project.attrib['upstream'], loutput[1]))
+                rname  = project.attrib['name']
+                repolist.append(Repo(rname, project.attrib['revision'], loutput[0], project.attrib['upstream'], loutput[1], repo_info[rname]))
         
     except Exception as err:
         print err
@@ -494,7 +510,7 @@ def get_buildinfo(prodname, prodversion, builddir, buildurl, forcebuilds=None):
     props['product_manifest_branch'] = manifestBranch
     props['product_manifest_remote_branch'] = manifestRemoteBranch
     props['product_manifest_commit'] = manifestCommit
-    blist = _get_local_builddir_info(builddir, buildurl, forcebuilds)
+    blist = _get_local_builddir_info(builddir, buildurl, manifestBranch, forcebuilds)
     for b in blist:
         props[_dash_to_underscore(b.name) + '_build_number'] = str(buildnumber)
         props[_dash_to_underscore(b.name) + '_build_version'] = buildversion
@@ -504,6 +520,10 @@ def get_buildinfo(prodname, prodversion, builddir, buildurl, forcebuilds=None):
         props[_dash_to_underscore(b.name) + '_build_abbrevcommit'] = b.abbrevcommit
         props[_dash_to_underscore(b.name) + '_build_commit_author'] = b.author
         props[_dash_to_underscore(b.name) + '_build_branch'] = b.branch
+        if(b.buildneeded):
+            props[_dash_to_underscore(b.name) + '_build_current_version'] = buildversion
+        else:
+            props[_dash_to_underscore(b.name) + '_build_current_version'] = b.preversion
         
     _gen_prop_file(props, builddir)
     
@@ -613,6 +633,7 @@ def _gen_new_packageinfo(pre_released_packageinfo, pre_build_packageinfo, curren
         if(current_buildprops["%s_build_needed" % propname_prefix] == "True"):
             repo["commit"] = current_buildprops["%s_build_commit" % propname_prefix]
             repo["author"] = current_buildprops["%s_build_commit_author" % propname_prefix]
+            repo["version"] = current_buildprops["%s_build_version" % propname_prefix]
             for component in repo["components"]:
                 component["storage"]["version"] = current_buildprops["%s_build_version" % propname_prefix]
 
@@ -943,6 +964,13 @@ def download_composite_product(builddir, art_source_file, local_target_dir=None)
         #
         for repo in art_product_jobject["repos"]:
             for component in repo["components"]:
+                # N/A means this option doesn't exist. If there was no package layout, that means this component
+                # of this product will be not included in the final product package. This component maybe a component
+                # that will be packaged in other components.
+                #
+                if(component["packageLayout"] == "N/A"):
+                    continue
+
                 component_file_name = "{artifactId}-{version}{classifier}.{packaging}".format(artifactId = component["storage"]["artifactId"],
                                                                                               version = component["storage"]["version"],
                                                                                               classifier = "" if(component["storage"]["classifier"] == "N/A") else "-" + component["classifier"],
@@ -980,6 +1008,8 @@ def download_composite_product(builddir, art_source_file, local_target_dir=None)
         if(not os.path.exists(local_full_product_dir)):
             os.mkdir(local_full_product_dir)
             for f in art_download_spec_ext["files"]:
+                # The component is at root path under product folder
+                #
                 if(f["product_component_layout"] == "None"):
                     local_full_product_component_file = local_full_product_dir + os.path.sep \
                                                         + os.path.basename(f["target_component_file"])
