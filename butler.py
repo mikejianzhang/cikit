@@ -184,21 +184,21 @@ class SimpleRestClient:
 
 class FileManager(object):
     @staticmethod
-    def _create_link(src, dest, type):
+    def _create_link(src, dest, linktype):
         if(platform.system().upper() == "WINDOWS"):
             import ctypes
             flags = 1 if src is not None and os.path.isdir(src) else 0
-            if(type == "link"):
-                if not ctypes.windll.kernel32.CreateHardLinkA(dest, src, flags):
+            if(linktype == "link"):
+                if not ctypes.windll.kernel32.CreateHardLinkA(dest, src, flags):  # @UndefinedVariable
                     raise OSError
-            elif(type == "symlink"):
-                if not ctypes.windll.kernel32.CreateSymbolicLinkA(dest, src, flags):
+            elif(linktype == "symlink"):
+                if not ctypes.windll.kernel32.CreateSymbolicLinkA(dest, src, flags):  # @UndefinedVariable
                     raise OSError
         else:
-            if(type == "link"):
-                os.link(src, dest)
-            elif(type == "symlink"):
-                os.symlink(src, dest)
+            if(linktype == "link"):
+                os.link(src, dest)  # @UndefinedVariable
+            elif(linktype == "symlink"):
+                os.symlink(src, dest)  # @UndefinedVariable
 
     @staticmethod
     def saveTextFile(filepath, content):
@@ -921,7 +921,6 @@ def download_composite_product(builddir, art_source_file, local_target_dir=None)
     :param art_source_file: string, ${groupId}/${artifactId}/${version}/${artifactId}-${version}-${classifier}.${packaging}
     :param local_target_dir: string, the directory path should have "/" at end.
     """
-    assert product_type in ["single", "composite"], "product_type supports 'single' and 'composite' now"
     ps = PathStackMgr()
     try:
         if(not local_target_dir):
