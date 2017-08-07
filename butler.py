@@ -437,24 +437,24 @@ def _get_next_buildnumber(prodname, prodversion, builddir):
     iUniqueBuildNumber = 1
     output = ""
     try:
-        cmd = "git tag -l %s_%s_* --sort=-version:refname" % (prodname, prodversion)
-        ucmd = "git tag -l %s_* --sort=-version:refname" % (prodname)
+        cmd = "git tag -l %s_%s_t* --sort=-version:refname" % (prodname, prodversion)
+        ucmd = "git tag -l %s_u* --sort=-version:refname" % (prodname)
         ps.pushd(builddir + os.sep + ".repo" + os.sep + "manifests")
         output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
         uoutput = subprocess.check_output(ucmd, stderr=subprocess.STDOUT, shell=True)
         if(output):
             loutput = output.split('\n')
             pretag = loutput[0]
-            pattern = "^%s_%s_(b.*)$" % (prodname, prodversion)
+            pattern = "^%s_%s_t(.*)$" % (prodname, prodversion)
             m = re.search(pattern, pretag)
             if(m):
                 sBuildNumber = m.group(1)
                 iBuildNumber = int(sBuildNumber) + 1
         
         if(uoutput):
-            luoutput = output.split('\n')
+            luoutput = uoutput.split('\n')
             pretag = luoutput[0]
-            pattern = "^%s_(.*)$" % (prodname)
+            pattern = "^%s_u(.*)$" % (prodname)
             m = re.search(pattern, pretag)
             if(m):
                 sUniqueBuildNumber = m.group(1)
@@ -510,8 +510,8 @@ def _get_manifest_info(builddir):
 def get_buildinfo(prodname, prodversion, builddir, buildurl, forcebuilds=None):
     (buildnumber, uniquebuildnumber) = _get_next_buildnumber(prodname, prodversion, builddir)
     buildversion = "%s_b%s" % (prodversion, str(buildnumber))
-    buildtag = "%s_%s_b%s" % (prodname, prodversion, str(buildnumber))
-    ubuildtag = "%s_%s" % (prodname, str(uniquebuildnumber))
+    buildtag = "%s_%s_t%s" % (prodname, prodversion, str(buildnumber))
+    ubuildtag = "%s_u%s" % (prodname, str(uniquebuildnumber))
     manifesturl, manifestBranch, manifestRemoteBranch, manifestCommit = _get_manifest_info(builddir)
     props={}
     props['product_name'] = prodname
@@ -528,8 +528,10 @@ def get_buildinfo(prodname, prodversion, builddir, buildurl, forcebuilds=None):
     blist = _get_local_builddir_info(builddir, buildurl, manifestBranch, forcebuilds)
     for b in blist:
         props[_dash_to_underscore(b.name) + '_build_number'] = str(buildnumber)
+        props[_dash_to_underscore(b.name) + '_u_build_number'] = str(uniquebuildnumber)
         props[_dash_to_underscore(b.name) + '_build_version'] = buildversion
         props[_dash_to_underscore(b.name) + '_build_tag'] = buildtag
+        props[_dash_to_underscore(b.name) + '_u_build_tag'] = ubuildtag
         props[_dash_to_underscore(b.name) + '_build_needed'] = str(b.buildneeded)
         props[_dash_to_underscore(b.name) + '_build_commit'] = b.commit
         props[_dash_to_underscore(b.name) + '_build_abbrevcommit'] = b.abbrevcommit
@@ -547,11 +549,16 @@ def get_buildinfo(prodname, prodversion, builddir, buildurl, forcebuilds=None):
 def tag_current_build(builddir, props):
     ps = PathStackMgr()
     try:
-        cmd = "git tag %s %s" % (props["product_build_tag"], props["product_manifest_commit"])
         ps.pushd(builddir + os.sep + ".repo" + os.sep + "manifests")
-        subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
-        cmd = "git push origin %s" % props["product_build_tag"]
-        subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+        cmd_tag1 = "git tag %s %s" % (props["product_build_tag"], props["product_manifest_commit"])
+        cmd_tag2 = "git tag %s %s" % (props["product_u_build_tag"], props["product_manifest_commit"])
+        subprocess.check_output(cmd_tag1, stderr=subprocess.STDOUT, shell=True)
+        subprocess.check_output(cmd_tag2, stderr=subprocess.STDOUT, shell=True)
+        cmd_push1 = "git push origin %s" % props["product_build_tag"]
+        cmd_push2 = "git push origin %s" % props["product_u_build_tag"]
+        subprocess.check_output(cmd_push1, stderr=subprocess.STDOUT, shell=True)
+        subprocess.check_output(cmd_push2, stderr=subprocess.STDOUT, shell=True)
+        ps.popd()
     except Exception as err:
         print err
     finally:
@@ -925,8 +932,13 @@ def pre_build_multi_repo(args):
     builddir = args["builddir"]
     buildurl = args["buildurl"]
     
+    #
+    # Need to be process safe.
+    #
     props = get_buildinfo(prodname, prodversion, builddir, buildurl, lforcebuilds)
     tag_current_build(builddir, props)
+    #
+    # 
 
 def post_build_composite_product(args):
     builddir = args["builddir"]
@@ -1150,3 +1162,11 @@ if __name__ == "__main__":
     #print ButlerConfig.default_jenkins()
     #pass
     #FileManager.create_symbolic_link(r"C:\Users\310276411\MyWork\CITest\copd-repo1\readme.txt", r"C:\Users\310276411\MyWork\CITest\copd-repo1\readme.txt.1")
+    #args = {}
+    #args["prodname"] = "test"
+    #args["prodversion"] = "1.0.0"
+    #args["builddir"] = "/Users/mike/Documents/MikeWorkspace/cikit/test"
+    #args["buildurl"] = "http://mikepro.local:8080/jenkins/job/test-muti-cibuild/88/"
+    #args["forcebuilds"] = "all"
+    
+    #pre_build_multi_repo(args)
