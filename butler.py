@@ -11,6 +11,7 @@ import requests
 import json
 import copy
 import hashlib
+import shutil
 from requests.auth import HTTPBasicAuth
 from properties.p import Property
 import platform
@@ -546,7 +547,7 @@ def get_buildinfo(prodname, prodversion, builddir, buildurl, forcebuilds=None):
     
     return props
 
-def tag_current_build(builddir, props):
+def create_pre_build_tag(builddir, props):
     ps = PathStackMgr()
     try:
         ps.pushd(builddir + os.sep + ".repo" + os.sep + "manifests")
@@ -564,6 +565,36 @@ def tag_current_build(builddir, props):
     finally:
         ps.popd()
         
+def create_post_build_tag(builddir, full_packageinfo_fn):
+    ps = PathStackMgr()
+    try:
+        current_buildprops = _load_buildproperties(builddir + os.path.sep + "build-info.properties")
+        ps.pushd(builddir + os.path.sep + ".repo")
+
+        if(os.path.exists("lmanifest")):
+            shutil.rmtree("lmanifest")
+
+        cmd_clone = "git clone -b %s %s" % (props['product_manifest_remote_branch'], props['product_manifest_url'])
+        subprocess.check_output(cmd_clone, stderr=subprocess.STDOUT, shell=True)
+        latest_packageinfo = _deserialize_jsonobject("lmanifest" + os.path.sep + "package.json")
+        full_packageinfo = _deserialize_jsonobject(builddir + os.path.sep + full_packageinfo_fn)
+        if(_compare_packageinfo(full_packageinfo, latest_packageinfo) == 1):
+            shutil.copyfile(builddir + os.path.sep + full_packageinfo_fn, builddir + os.sep + ".repo" + os.path.sep + "lmanifest" + os.path.sep + "package.json")
+            cmd_commit = "git -C lmanifest commit -m %s" % ("Update package.json with latest build " + props['product_name'] + "_" + props['product_build_version'])
+            cmd_tag = "git -C lmanifest tag %s" % (props['product_name'] + "_" + props['product_build_version'])
+            cmd_push_commit = "git -C lmanifest push"
+            cmd_push_tag = "git -C lmanifest push origin %s" % (props['product_name'] + "_" + props['product_build_version'])
+            subprocess.check_output(cmd_commit, stderr=subprocess.STDOUT, shell=True)
+            subprocess.check_output(cmd_tag, stderr=subprocess.STDOUT, shell=True)
+            subprocess.check_output(cmd_push_commit, stderr=subprocess.STDOUT, shell=True)
+            subprocess.check_output(cmd_push_tag, stderr=subprocess.STDOUT, shell=True)
+
+        ps.popd()
+    except Exception as err:
+        print err
+    finally:
+        ps.popd()
+
 def _serialize_jsonobject(jobject, outfile):
     try:
         f = open(outfile, 'w')
@@ -936,7 +967,7 @@ def pre_build_multi_repo(args):
     # Need to be process safe.
     #
     props = get_buildinfo(prodname, prodversion, builddir, buildurl, lforcebuilds)
-    tag_current_build(builddir, props)
+    create_pre_build_tag(builddir, props)
     #
     # 
 
@@ -945,7 +976,12 @@ def post_build_composite_product(args):
     base_prodtag = args["prereleasedtag"]
     (full_packageinfo_fn, increment_packageinfo_fn, patch_packageinfo_fn) = pack_composite_product(builddir, base_prodtag)
     upload_composite_product(builddir, full_packageinfo_fn, increment_packageinfo_fn, patch_packageinfo_fn)
-
+    #
+    # Need to be process safe.
+    #
+    create_post_build_tag(builddir, full_packageinfo_fn)
+    #
+    #
     
 def download_composite_product(builddir, art_source_file, local_target_dir=None):
     """
