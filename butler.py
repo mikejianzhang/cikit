@@ -568,19 +568,19 @@ def create_pre_build_tag(builddir, props):
 def create_post_build_tag(builddir, full_packageinfo_fn):
     ps = PathStackMgr()
     try:
-        current_buildprops = _load_buildproperties(builddir + os.path.sep + "build-info.properties")
+        props = _load_buildproperties(builddir + os.path.sep + "build-info.properties")
         ps.pushd(builddir + os.path.sep + ".repo")
 
         if(os.path.exists("lmanifest")):
             shutil.rmtree("lmanifest")
 
-        cmd_clone = "git clone -b %s %s" % (props['product_manifest_remote_branch'], props['product_manifest_url'])
+        cmd_clone = "git clone -b %s %s lmanifest" % (props['product_manifest_remote_branch'], props['product_manifest_url'])
         subprocess.check_output(cmd_clone, stderr=subprocess.STDOUT, shell=True)
         latest_packageinfo = _deserialize_jsonobject("lmanifest" + os.path.sep + "package.json")
         full_packageinfo = _deserialize_jsonobject(builddir + os.path.sep + full_packageinfo_fn)
         if(_compare_packageinfo(full_packageinfo, latest_packageinfo) == 1):
             shutil.copyfile(builddir + os.path.sep + full_packageinfo_fn, builddir + os.sep + ".repo" + os.path.sep + "lmanifest" + os.path.sep + "package.json")
-            cmd_commit = "git -C lmanifest commit -m %s" % ("Update package.json with latest build " + props['product_name'] + "_" + props['product_build_version'])
+            cmd_commit = "git -C lmanifest commit -a -m \"%s\"" % ("Update package.json with latest build " + props['product_name'] + "_" + props['product_build_version'])
             cmd_tag = "git -C lmanifest tag %s" % (props['product_name'] + "_" + props['product_build_version'])
             cmd_push_commit = "git -C lmanifest push"
             cmd_push_tag = "git -C lmanifest push origin %s" % (props['product_name'] + "_" + props['product_build_version'])
@@ -1206,3 +1206,8 @@ if __name__ == "__main__":
     #args["forcebuilds"] = "all"
     
     #pre_build_multi_repo(args)
+    #ButlerConfig.load()
+    #args = {}
+    #args["builddir"] = "/Users/mike/Documents/MikeWorkspace/cikit/test"
+    #args["prereleasedtag"] = "test_0.0.1_b66"
+    #post_build_composite_product(args)
