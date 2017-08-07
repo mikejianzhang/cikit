@@ -434,26 +434,38 @@ def _get_local_builddir_info(builddir, buildurl, manifest_branch, forcebuilds=No
 def _get_next_buildnumber(prodname, prodversion, builddir):
     ps = PathStackMgr()
     iBuildNumber = 1
+    iUniqueBuildNumber = 1
     output = ""
     try:
         cmd = "git tag -l %s_%s_* --sort=-version:refname" % (prodname, prodversion)
+        ucmd = "git tag -l %s_* --sort=-version:refname" % (prodname)
         ps.pushd(builddir + os.sep + ".repo" + os.sep + "manifests")
         output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+        uoutput = subprocess.check_output(ucmd, stderr=subprocess.STDOUT, shell=True)
         if(output):
             loutput = output.split('\n')
             pretag = loutput[0]
-            pattern = "^%s_%s_b(.*)$" % (prodname, prodversion)
+            pattern = "^%s_%s_(b.*)$" % (prodname, prodversion)
             m = re.search(pattern, pretag)
             if(m):
                 sBuildNumber = m.group(1)
                 iBuildNumber = int(sBuildNumber) + 1
+        
+        if(uoutput):
+            luoutput = output.split('\n')
+            pretag = luoutput[0]
+            pattern = "^%s_(.*)$" % (prodname)
+            m = re.search(pattern, pretag)
+            if(m):
+                sUniqueBuildNumber = m.group(1)
+                iUniqueBuildNumber = int(sUniqueBuildNumber) + 1
         
     except Exception as err:
         print err
     finally:
         ps.popd()
     
-    return iBuildNumber
+    return (iBuildNumber, iUniqueBuildNumber)
 
 def _get_manifest_info(builddir):
     ps = PathStackMgr()
@@ -496,16 +508,19 @@ def _get_manifest_info(builddir):
     return (manifestUrl, manifestBranch, manifestRemoteBranch, manifestCommit)
 
 def get_buildinfo(prodname, prodversion, builddir, buildurl, forcebuilds=None):
-    buildnumber = _get_next_buildnumber(prodname, prodversion, builddir)
+    (buildnumber, uniquebuildnumber) = _get_next_buildnumber(prodname, prodversion, builddir)
     buildversion = "%s_b%s" % (prodversion, str(buildnumber))
     buildtag = "%s_%s_b%s" % (prodname, prodversion, str(buildnumber))
+    ubuildtag = "%s_%s" % (prodname, str(uniquebuildnumber))
     manifesturl, manifestBranch, manifestRemoteBranch, manifestCommit = _get_manifest_info(builddir)
     props={}
     props['product_name'] = prodname
     props['product_version'] = prodversion
     props['product_build_number'] = str(buildnumber)
+    props['product_u_build_number'] = str(uniquebuildnumber)
     props['product_build_version'] = buildversion
     props['product_build_tag'] = buildtag
+    props['product_u_build_tag'] = ubuildtag
     props['product_manifest_url'] = manifesturl
     props['product_manifest_branch'] = manifestBranch
     props['product_manifest_remote_branch'] = manifestRemoteBranch
