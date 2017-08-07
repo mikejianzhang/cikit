@@ -185,14 +185,14 @@ class SimpleRestClient:
 class FileManager(object):
     @staticmethod
     def _create_link(src, dest, type):
-        if(platform.system() == "windows"):
+        if(platform.system().upper() == "WINDOWS"):
             import ctypes
             flags = 1 if src is not None and os.path.isdir(src) else 0
             if(type == "link"):
                 if not ctypes.windll.kernel32.CreateHardLinkA(dest, src, flags):
                     raise OSError
             elif(type == "symlink"):
-                if not ctypes.windll.kernel32.CreateSymbolicLinkA(dest, src, flogs):
+                if not ctypes.windll.kernel32.CreateSymbolicLinkA(dest, src, flags):
                     raise OSError
         else:
             if(type == "link"):
@@ -1129,3 +1129,4 @@ if __name__ == "__main__":
     #print ButlerConfig.datadir()
     #print ButlerConfig.default_jenkins()
     #pass
+    #FileManager.create_symbolic_link(r"C:\Users\310276411\MyWork\CITest\copd-repo1\readme.txt", r"C:\Users\310276411\MyWork\CITest\copd-repo1\readme.txt.1")
