@@ -722,13 +722,15 @@ def _gen_new_packageinfo(pre_released_packageinfo, pre_build_packageinfo, curren
     incremental_packageinfo["storage"]["classifier"] = "increment"
     incremental_packageinfo["repos"] = filter(_filter_incremental_repo, full_build_packageinfo["repos"])
     
-    patch_packageinfo = {}
-    patch_packageinfo["product"] = full_build_packageinfo["product"]
-    patch_packageinfo["version"] = full_build_packageinfo["version"]
-    patch_packageinfo["buildNumber"] = full_build_packageinfo["buildNumber"]
-    patch_packageinfo["storage"] = copy.deepcopy(full_build_packageinfo["storage"])
-    patch_packageinfo["storage"]["classifier"] = "patch"
-    patch_packageinfo["repos"] = _get_patch_repos(full_build_packageinfo["repos"])
+    patch_packageinfo = copy.deepcopy(full_build_packageinfo)
+    if(pre_released_packageinfo):
+        patch_packageinfo = {}
+        patch_packageinfo["product"] = full_build_packageinfo["product"]
+        patch_packageinfo["version"] = full_build_packageinfo["version"]
+        patch_packageinfo["buildNumber"] = full_build_packageinfo["buildNumber"]
+        patch_packageinfo["storage"] = copy.deepcopy(full_build_packageinfo["storage"])
+        patch_packageinfo["storage"]["classifier"] = "patch"
+        patch_packageinfo["repos"] = _get_patch_repos(full_build_packageinfo["repos"])
     
     return (full_build_packageinfo, incremental_packageinfo, patch_packageinfo)
 
@@ -814,9 +816,12 @@ def pack_composite_product(builddir, base_prodtag):
         output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
         pre_packageinfo_s = _deserialize_jsonobject_fromstring(output)
         
-        cmd = "git --no-pager show %s:%s" % (base_prodtag, "package.json")
-        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
-        base_packageinfo_s = _deserialize_jsonobject_fromstring(output)
+        base_packageinfo_s = None
+        if(base_prodtag):
+            cmd = "git --no-pager show %s:%s" % (base_prodtag, "package.json")
+            output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
+            base_packageinfo_s = _deserialize_jsonobject_fromstring(output)
+        
         ps.popd()
 
         (full_packageinfo, increment_packageinfo, patch_packageinfo) = _gen_new_packageinfo(base_packageinfo_s, pre_packageinfo_s, current_buildprops)
@@ -1082,6 +1087,7 @@ def main(argv):
                                                     help='Store the local work directory of current build')
     parser_postbuild_composite_product.add_argument('--prereleasedtag', action='store', 
                                                     dest='prereleasedtag',
+                                                    default=None,
                                                     help='Store pre released version')
     parser_postbuild_composite_product.set_defaults(func=post_build_composite_product)
     
