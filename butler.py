@@ -777,7 +777,7 @@ def _gen_new_packageinfo(pre_released_packageinfo, pre_build_packageinfo, curren
     incremental_packageinfo["repos"] = filter(_filter_incremental_repo, full_build_packageinfo["repos"])
     
     patch_packageinfo = copy.deepcopy(full_build_packageinfo)
-    full_build_packageinfo["storage"]["classifier"] = "patch"
+    patch_packageinfo["storage"]["classifier"] = "patch"
     if(pre_released_packageinfo):
         patch_packageinfo = {}
         patch_packageinfo["product"] = full_build_packageinfo["product"]
