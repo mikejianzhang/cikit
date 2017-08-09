@@ -765,6 +765,7 @@ def _gen_new_packageinfo(pre_released_packageinfo, pre_build_packageinfo, curren
     full_build_packageinfo["version"] = current_buildprops["product_version"]
     full_build_packageinfo["buildNumber"] = current_buildprops["product_build_number"]
     full_build_packageinfo["storage"]["version"] = current_buildprops["product_build_version"]
+    full_build_packageinfo["storage"]["classifier"] = "full"
     full_build_packageinfo["repos"] = map(_get_new_reposinfo, full_build_packageinfo["repos"])
     
     incremental_packageinfo = {}
@@ -776,6 +777,7 @@ def _gen_new_packageinfo(pre_released_packageinfo, pre_build_packageinfo, curren
     incremental_packageinfo["repos"] = filter(_filter_incremental_repo, full_build_packageinfo["repos"])
     
     patch_packageinfo = copy.deepcopy(full_build_packageinfo)
+    full_build_packageinfo["storage"]["classifier"] = "patch"
     if(pre_released_packageinfo):
         patch_packageinfo = {}
         patch_packageinfo["product"] = full_build_packageinfo["product"]
