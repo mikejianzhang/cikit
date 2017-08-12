@@ -517,6 +517,7 @@ def get_buildinfo(prodname, prodversion, builddir, buildurl, forcebuilds=None):
     props={}
     props['product_name'] = prodname
     props['product_version'] = prodversion
+    props['product_build_needed'] = "false"
     props['product_build_number'] = str(buildnumber)
     props['product_u_build_number'] = str(uniquebuildnumber)
     props['product_build_version'] = buildversion
@@ -540,6 +541,7 @@ def get_buildinfo(prodname, prodversion, builddir, buildurl, forcebuilds=None):
         props[_dash_to_underscore(b.name) + '_build_branch'] = b.branch
         if(b.buildneeded):
             props[_dash_to_underscore(b.name) + '_build_current_version'] = buildversion
+            props['product_build_needed'] = "true"
         else:
             props[_dash_to_underscore(b.name) + '_build_current_version'] = b.preversion
         
