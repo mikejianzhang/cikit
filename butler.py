@@ -649,9 +649,11 @@ def _compare_packageinfo(packageinfo1, packageinfo2):
     elif(packageinfo1["version"] < packageinfo2["version"]):
         result = -1
     else:
-        if(packageinfo1["buildNumber"] > packageinfo2["buildNumber"]):
+        iBN1 = int(packageinfo1["buildNumber"])
+        iBN2 = int(packageinfo2["buildNumber"])
+        if(iBN1 > iBN2):
             result = 1
-        elif(packageinfo1["buildNumber"] < packageinfo2["buildNumber"]):
+        elif(iBN1 < iBN2):
             result = -1
         else:
             result = 0
