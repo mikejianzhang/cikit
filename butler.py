@@ -833,7 +833,7 @@ def download_artifact_byspec(builddir, art_server_id, art_download_spec_file):
             else:
                 raise Exception("Can't find art source file!")
 
-            target_fp = file["target"] + os.sep + partial_target_fp
+            target_fp = file["target"] + partial_target_fp
             FileManager.gen_file_md5sum(target_fp)
         ps.popd()
     except Exception as err:
@@ -846,6 +846,9 @@ def download_artifact_byfile(builddir, art_server_id, art_source_file, local_tar
     try:
         if(not os.path.isdir(local_target_dir)):
             raise Exception("%s is not a directory" % local_target_dir)
+
+        if(local_target_dir.rfind("/") != len(local_target_dir)-1 and local_target_dir.rfind("\\") != len(local_target_dir)-1):
+            local_target_dir = local_target_dir + os.path.sep
 
         ps.pushd(builddir)
         cmd = "jfrog rt download --flat=false --server-id=%s %s %s" % (art_server_id, art_source_file, local_target_dir)
