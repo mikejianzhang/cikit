@@ -1105,7 +1105,44 @@ def download_composite_product(args):
                     os.mkdir(os.path.dirname(local_full_product_component_file))
                     
                 FileManager.create_hard_link(f["target_full_component_file"], local_full_product_component_file)
-                
+
+        ps.popd()
+    except Exception as err:
+        print err
+    finally:
+        ps.popd()
+
+def download_single_product(args):
+    """
+    :param builddir: string, build directory
+    :param art_source_file: string, ${groupId}/${artifactId}/${version}/${artifactId}-${version}-${classifier}.${packaging}
+    :param local_target_dir: string, the directory path should have "/" at end.
+    """
+    builddir = args["workdir"] if args["workdir"] else  ButlerConfig.datadir()
+    art_source_file = args["rpath"]
+    local_target_dir = args["tdir"] if args["tdir"] else  ButlerConfig.datadir()
+
+    if(not os.path.isdir(local_target_dir)):
+        raise Exception("%s is not a directory" % local_target_dir)
+
+    if(local_target_dir.rfind("/") != len(local_target_dir)-1 and local_target_dir.rfind("\\") != len(local_target_dir)-1):
+        local_target_dir = local_target_dir + os.path.sep
+
+    ps = PathStackMgr()
+    try:
+        (repourl, art_server_id, art_download_repo, art_upload_repo) = ButlerConfig.default_artifactory()
+
+        ps.pushd(builddir)
+        # No matter it is single or composite product, we need to download it firstly!
+        # The source file path of product artifact or the in artifactory started from artifactory download
+        # repo which we think it as the full path, because jfrog cli treat it like this way.
+        #
+        art_full_source_file = art_download_repo + "/" + art_source_file
+
+        # Download the product's artifact from artifactory
+        #
+        download_artifact_byfile(builddir, art_server_id, art_full_source_file, local_target_dir)
+
         ps.popd()
     except Exception as err:
         print err
@@ -1170,11 +1207,11 @@ def main(argv):
                                                     help='Store pre released version')
     parser_postbuild_composite_product.set_defaults(func=post_build_composite_product)
     
-    # Add sub-commands: download_composite_product|post_build_composite_product
+    # Add sub-commands: download_composite_product|download_single_product|post_build_composite_product
     #
     subparsers_cd = parsers_cd.add_subparsers(dest = 'sub_command')
     parser_download_composite_product = subparsers_cd.add_parser('download_composite_product',
-                                            help='Download products')
+                                            help='Download composite products')
     parser_download_composite_product.add_argument('--workdir', action='store',
                                                    dest='workdir',
                                                    default=None,
@@ -1189,6 +1226,22 @@ def main(argv):
                                                    help='Store the product download directory')
     parser_download_composite_product.set_defaults(func=download_composite_product)
     
+    parser_download_single_product = subparsers_cd.add_parser('download_single_product',
+                                            help='Download single products')
+    parser_download_single_product.add_argument('--workdir', action='store',
+                                                   dest='workdir',
+                                                   default=None,
+                                                   help='Store the command running directory')
+    parser_download_single_product.add_argument('--rpath', action='store',
+                                                   dest='rpath',
+                                                   required=True,
+                                                   help='Store the remote source file in artifactory')
+    parser_download_single_product.add_argument('--tdir', action='store',
+                                                   dest='tdir',
+                                                   default=None,
+                                                   help='Store the product download directory')
+    parser_download_single_product.set_defaults(func=download_single_product)
+
     args = parser.parse_args(argv[1:])
     dictargs = vars(args)
     args.func(dictargs)
