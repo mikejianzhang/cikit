@@ -995,15 +995,18 @@ def download_composite_product(args):
     :param art_source_file: string, ${groupId}/${artifactId}/${version}/${artifactId}-${version}-${classifier}.${packaging}
     :param local_target_dir: string, the directory path should have "/" at end.
     """
-    builddir = args["workdir"] if args["workdir"] else  ButlerConfig.home()
+    builddir = args["workdir"] if args["workdir"] else  ButlerConfig.datadir()
     art_source_file = args["rpath"]
-    local_target_dir = args["tdir"] if args["tdir"] else  ButlerConfig.home()
+    local_target_dir = args["tdir"] if args["tdir"] else  ButlerConfig.datadir()
+
+    if(not os.path.isdir(local_target_dir)):
+        raise Exception("%s is not a directory" % local_target_dir)
+
+    if(local_target_dir.rfind("/") != len(local_target_dir)-1 and local_target_dir.rfind("\\") != len(local_target_dir)-1):
+        local_target_dir = local_target_dir + os.path.sep
 
     ps = PathStackMgr()
     try:
-        if(not local_target_dir):
-            local_target_dir = ButlerConfig.datadir()
-        
         (repourl, art_server_id, art_download_repo, art_upload_repo) = ButlerConfig.default_artifactory()
 
         ps.pushd(builddir)
@@ -1022,7 +1025,7 @@ def download_composite_product(args):
         # After downloaded the product's package info file (json) from artifactory, local_full_target_file was calculated
         # to be its local full path on current runninng operation system which we need to convert the path's seperation.
         #
-        local_full_target_file = local_target_dir + os.path.sep + art_source_file.replace("/", os.path.sep)
+        local_full_target_file = local_target_dir + art_source_file.replace("/", os.path.sep)
 
         # Load the product's pacakge info file(json) to generate artifactory download spec file to download real components
         # included in this package info file.
@@ -1059,7 +1062,7 @@ def download_composite_product(args):
 
                 art_full_component_file =  art_download_repo + "/" + art_component_file
                 local_component_file = art_component_file.replace("/", os.path.sep)
-                local_full_component_file = local_target_dir + os.sep + local_component_file
+                local_full_component_file = local_target_dir + local_component_file
                 art_download_spec["files"].append({"pattern":art_full_component_file, "target":local_target_dir})
                 art_download_spec_ext["files"].append({"pattern":art_full_component_file, 
                                                        "target":local_target_dir, 
@@ -1075,7 +1078,7 @@ def download_composite_product(args):
         #        
         _serialize_jsonobject(art_download_spec, "product_download.spec")
         download_artifact_byspec(builddir, art_server_id, "product_download.spec")
-        local_full_product_dir = local_target_dir + os.path.sep \
+        local_full_product_dir = local_target_dir \
                                 + art_product_jobject["storage"]["groupId"].replace(".", os.path.sep) \
                                 + os.path.sep \
                                 + art_product_jobject["storage"]["artifactId"] + os.path.sep + art_product_jobject["storage"]["version"] + os.path.sep \
