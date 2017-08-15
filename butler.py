@@ -113,7 +113,7 @@ class ButlerConfig(object):
         art = ButlerConfig._arts[server_id]
         if(not art):
             raise Exception("Artifactory %s doesn't exist!" % (server_id,))
-        return (art["url"], art["apiKey"], art["serverId"], art["downloadRepo"], art["uploadRepo"])
+        return (art["url"], art["serverId"], art["downloadRepo"], art["uploadRepo"])
     
     @staticmethod
     def default_artifactory():
@@ -918,7 +918,7 @@ def upload_composite_product(builddir, full_packageinfo_fn, increment_packageinf
     try:
         ps.pushd(builddir)
 
-        (repourl, key, art_server_id, art_download_repo, art_upload_repo) = ButlerConfig.default_artifactory()
+        (repourl, art_server_id, art_download_repo, art_upload_repo) = ButlerConfig.default_artifactory()
         full_packageinfo = _deserialize_jsonobject(full_packageinfo_fn)
         increment_packageinfo = _deserialize_jsonobject(increment_packageinfo_fn)
         patch_packageinfo = _deserialize_jsonobject(patch_packageinfo_fn)
@@ -1000,7 +1000,7 @@ def download_composite_product(builddir, art_source_file, local_target_dir=None)
         if(not local_target_dir):
             local_target_dir = ButlerConfig.datadir()
         
-        (repourl, key, art_server_id, art_download_repo, art_upload_repo) = ButlerConfig.default_artifactory()
+        (repourl, art_server_id, art_download_repo, art_upload_repo) = ButlerConfig.default_artifactory()
 
         ps.pushd(builddir)
         # No matter it is single or composite product, we need to download it firstly!
