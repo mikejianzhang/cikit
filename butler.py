@@ -518,6 +518,7 @@ def get_buildinfo(prodname, prodversion, builddir, buildurl, forcebuilds=None):
     props['product_name'] = prodname
     props['product_version'] = prodversion
     props['product_build_needed'] = "false"
+    props['build_type'] = "CI"
     props['product_build_number'] = str(buildnumber)
     props['product_u_build_number'] = str(uniquebuildnumber)
     props['product_build_version'] = buildversion
