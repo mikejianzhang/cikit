@@ -15,9 +15,18 @@ import shutil
 from requests.auth import HTTPBasicAuth
 from properties.p import Property
 import platform
+from enum import Enum
 
 def _dash_to_underscore(value):
     return value.replace("-", "_")
+
+class RepoType(Enum):
+    single = 1
+    multi = 2
+    
+class ProductType(Enum):
+    simple = 1
+    composite = 2
 
 class ButlerConfig(object):
     _home = os.path.expanduser("~") + os.path.sep
@@ -842,7 +851,7 @@ def download_artifact_byspec(builddir, art_server_id, art_download_spec_file):
     finally:
         ps.popd()
         
-def download_artifact_byfile(builddir, art_server_id, art_source_file, local_target_dir):
+def download_artifact_byfile(workdir, art_server_id, art_source_file, local_target_dir):
     ps = PathStackMgr()
     try:
         if(not os.path.isdir(local_target_dir)):
@@ -851,7 +860,7 @@ def download_artifact_byfile(builddir, art_server_id, art_source_file, local_tar
         if(local_target_dir.rfind("/") != len(local_target_dir)-1 and local_target_dir.rfind("\\") != len(local_target_dir)-1):
             local_target_dir = local_target_dir + os.path.sep
 
-        ps.pushd(builddir)
+        ps.pushd(workdir)
         cmd = "jfrog rt download --flat=false --server-id=%s %s %s" % (art_server_id, art_source_file, local_target_dir)
         output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
         ps.popd()
@@ -1112,6 +1121,46 @@ def download_composite_product(args):
         print err
     finally:
         ps.popd()
+        
+def download_product_simple(source, destdir=None, product_type=ProductType.composite, workdir=None):
+    """
+    :param workdir: Working directory of the command
+    :param source: String, Maven format. ${groupId}/${artifactId}/${version}/${artifactId}-${version}-${classifier}.${packaging}
+    :param destdir: String, the directory path should have "/" at end.
+    :param product_type: Enum, ProductType.simple | ProductType.composite
+    """
+    workdir = ButlerConfig.datadir() if not workdir else workdir
+    destdir = ButlerConfig.datadir() if not destdir else destdir
+
+    if(not os.path.isdir(destdir)):
+        raise Exception("%s is not a directory" % destdir)
+
+    if(destdir.rfind("/") != len(destdir)-1 and destdir.rfind("\\") != len(destdir)-1):
+        destdir = destdir + os.path.sep
+
+    ps = PathStackMgr()
+    try:
+        (repourl, art_server_id, art_download_repo, art_upload_repo) = ButlerConfig.default_artifactory()
+
+        ps.pushd(workdir)
+        # No matter it is single or composite product, we need to download it firstly!
+        # The source file path of product artifact or the in artifactory started from artifactory download
+        # repo which we think it as the full path, because jfrog cli treat it like this way.
+        #
+        art_full_source_file = art_download_repo + "/" + source
+
+        # Download the product's artifact from artifactory
+        #
+        download_artifact_byfile(workdir, art_server_id, art_full_source_file, destdir)
+
+        ps.popd()
+    except Exception as err:
+        print err
+    finally:
+        ps.popd()
+        
+def download_product(args):
+    pass
 
 def download_single_product(args):
     """
