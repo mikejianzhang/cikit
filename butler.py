@@ -1001,54 +1001,54 @@ def post_build_composite_product(args):
     create_post_build_tag(builddir, full_packageinfo_fn)
     #
     #
-    
-def download_composite_product(args):
-    """
-    :param builddir: string, build directory
-    :param art_source_file: string, ${groupId}/${artifactId}/${version}/${artifactId}-${version}-${classifier}.${packaging}
-    :param local_target_dir: string, the directory path should have "/" at end.
-    """
-    builddir = args["workdir"] if args["workdir"] else  ButlerConfig.datadir()
-    art_source_file = args["rpath"]
-    local_target_dir = args["tdir"] if args["tdir"] else  ButlerConfig.datadir()
 
-    if(not os.path.isdir(local_target_dir)):
-        raise Exception("%s is not a directory" % local_target_dir)
+def download_product_composite(source, destdir=None, workdir=None):
+    """
+    :param workdir: Working directory of the command
+    :param source: String, Maven format. ${groupId}/${artifactId}/${version}/${artifactId}-${version}-${classifier}.${packaging}
+    :param destdir: String, the directory path should have "/" at end.
+    :param product_type: Enum, ProductType.simple | ProductType.composite
+    """
+    workdir = ButlerConfig.datadir() if not workdir else workdir
+    destdir = ButlerConfig.datadir() if not destdir else destdir
 
-    if(local_target_dir.rfind("/") != len(local_target_dir)-1 and local_target_dir.rfind("\\") != len(local_target_dir)-1):
-        local_target_dir = local_target_dir + os.path.sep
+    if(not os.path.isdir(destdir)):
+        raise Exception("%s is not a directory" % destdir)
+
+    if(destdir.rfind("/") != len(destdir)-1 and destdir.rfind("\\") != len(destdir)-1):
+        destdir = destdir + os.path.sep
 
     ps = PathStackMgr()
     try:
         (repourl, art_server_id, art_download_repo, art_upload_repo) = ButlerConfig.default_artifactory()
 
-        ps.pushd(builddir)
-        # No matter it is single or composite product, we need to download it firstly!
-        # The source file path of product artifact or the in artifactory started from artifactory download
+        ps.pushd(workdir)
+        # No matter it is simple or composite product, we need to download it firstly!
+        # The source file path of product artifact or the in Artifactory started from Artifactory download
         # repo which we think it as the full path, because jfrog cli treat it like this way.
         #
-        art_full_source_file = art_download_repo + "/" + art_source_file
+        art_full_source_file = art_download_repo + "/" + source
 
-        # Download the product's artifact from artifactory
+        # Download the product's artifact from Artifactory
         #
-        download_artifact_byfile(builddir, art_server_id, art_full_source_file, local_target_dir)
+        download_artifact_byfile(workdir, art_server_id, art_full_source_file, destdir)
         
         # Well it is a composite product, the downloaded artifact above is just the product's package info file(json)
+        # After download the product's package info file (json) from Artifactory, local_full_target_file was calculated
+        # to be its local full path.
         #
-        # After downloaded the product's package info file (json) from artifactory, local_full_target_file was calculated
-        # to be its local full path on current runninng operation system which we need to convert the path's seperation.
-        #
-        local_full_target_file = local_target_dir + art_source_file.replace("/", os.path.sep)
+        local_full_target_file = destdir + source.replace("/", os.path.sep)
 
-        # Load the product's pacakge info file(json) to generate artifactory download spec file to download real components
+        # Load the product's package info file(json) to generate artifactory download spec file to download real components
         # included in this package info file.
         #
         art_product_jobject = _deserialize_jsonobject(local_full_target_file)
+
         # This dictionary will store the real download spec info
         #
         art_download_spec = {}
         art_download_spec["files"] = []
-        # An extended one of the download spec file to record more info in order to create symbolic link of the real
+        # An extended one of the download spec file to record more info in order to create link of the real
         # component file from product folder
         #
         art_download_spec_ext = {}
@@ -1058,7 +1058,7 @@ def download_composite_product(args):
         for repo in art_product_jobject["repos"]:
             for component in repo["components"]:
                 # N/A means this option doesn't exist. If there was no package layout, that means this component
-                # of this product will be not included in the final product package. This component maybe a component
+                # of this product will not be included in the final product package. This component maybe a component
                 # that will be packaged in other components.
                 #
                 if(component["packageLayout"] == "N/A"):
@@ -1075,10 +1075,10 @@ def download_composite_product(args):
 
                 art_full_component_file =  art_download_repo + "/" + art_component_file
                 local_component_file = art_component_file.replace("/", os.path.sep)
-                local_full_component_file = local_target_dir + local_component_file
-                art_download_spec["files"].append({"pattern":art_full_component_file, "target":local_target_dir})
+                local_full_component_file = destdir + local_component_file
+                art_download_spec["files"].append({"pattern":art_full_component_file, "target":destdir})
                 art_download_spec_ext["files"].append({"pattern":art_full_component_file, 
-                                                       "target":local_target_dir, 
+                                                       "target":destdir,
                                                        "target_full_component_file":local_full_component_file, 
                                                        "target_component_file":local_component_file, 
                                                        "product_component_layout":component["packageLayout"]})
@@ -1090,8 +1090,8 @@ def download_composite_product(args):
         # If the product folder doens't exist, create it!
         #        
         _serialize_jsonobject(art_download_spec, "product_download.spec")
-        download_artifact_byspec(builddir, art_server_id, "product_download.spec")
-        local_full_product_dir = local_target_dir \
+        download_artifact_byspec(workdir, art_server_id, "product_download.spec")
+        local_full_product_dir = destdir \
                                 + art_product_jobject["storage"]["groupId"].replace(".", os.path.sep) \
                                 + os.path.sep \
                                 + art_product_jobject["storage"]["artifactId"] + os.path.sep + art_product_jobject["storage"]["version"] + os.path.sep \
@@ -1107,6 +1107,8 @@ def download_composite_product(args):
                     local_full_product_component_file = local_full_product_dir + os.path.sep \
                                                         + os.path.basename(f["target_component_file"])
                 else:
+                    # Each level of folder in product component layout will be seperated by ","
+                    #
                     local_full_product_component_file = local_full_product_dir + os.path.sep \
                                                         + f["product_component_layout"].replace(",", os.path.sep) + os.path.sep \
                                                         + os.path.basename(f["target_component_file"])
@@ -1121,8 +1123,8 @@ def download_composite_product(args):
         print err
     finally:
         ps.popd()
-        
-def download_product_simple(source, destdir=None, product_type=ProductType.composite, workdir=None):
+
+def download_product_simple(source, destdir=None, workdir=None):
     """
     :param workdir: Working directory of the command
     :param source: String, Maven format. ${groupId}/${artifactId}/${version}/${artifactId}-${version}-${classifier}.${packaging}
@@ -1159,45 +1161,19 @@ def download_product_simple(source, destdir=None, product_type=ProductType.compo
     finally:
         ps.popd()
         
-def download_product(args):
-    pass
+def dispatch_command(cmd_name):
+    def download_product(args):
+        source = args['source']
+        destdir = args['destdir']
+        product_type = args['product_type']
+        workdir = args['workdir']
+        if(product_type == ProductType.composite):
+            download_product_composite(source, destdir, workdir)
+        elif(product_type == ProductType.simple):
+            download_product_simple(source, destdir, workdir)
 
-def download_single_product(args):
-    """
-    :param builddir: string, build directory
-    :param art_source_file: string, ${groupId}/${artifactId}/${version}/${artifactId}-${version}-${classifier}.${packaging}
-    :param local_target_dir: string, the directory path should have "/" at end.
-    """
-    builddir = args["workdir"] if args["workdir"] else  ButlerConfig.datadir()
-    art_source_file = args["rpath"]
-    local_target_dir = args["tdir"] if args["tdir"] else  ButlerConfig.datadir()
-
-    if(not os.path.isdir(local_target_dir)):
-        raise Exception("%s is not a directory" % local_target_dir)
-
-    if(local_target_dir.rfind("/") != len(local_target_dir)-1 and local_target_dir.rfind("\\") != len(local_target_dir)-1):
-        local_target_dir = local_target_dir + os.path.sep
-
-    ps = PathStackMgr()
-    try:
-        (repourl, art_server_id, art_download_repo, art_upload_repo) = ButlerConfig.default_artifactory()
-
-        ps.pushd(builddir)
-        # No matter it is single or composite product, we need to download it firstly!
-        # The source file path of product artifact or the in artifactory started from artifactory download
-        # repo which we think it as the full path, because jfrog cli treat it like this way.
-        #
-        art_full_source_file = art_download_repo + "/" + art_source_file
-
-        # Download the product's artifact from artifactory
-        #
-        download_artifact_byfile(builddir, art_server_id, art_full_source_file, local_target_dir)
-
-        ps.popd()
-    except Exception as err:
-        print err
-    finally:
-        ps.popd()
+    commands = {'download_product':download_product}
+    return commands[cmd_name]
 
 def main(argv):
     # python butler.py
@@ -1257,40 +1233,32 @@ def main(argv):
                                                     help='Store pre released version')
     parser_postbuild_composite_product.set_defaults(func=post_build_composite_product)
     
-    # Add sub-commands: download_composite_product|download_single_product|post_build_composite_product
+    # Add sub-commands: download_product
     #
     subparsers_cd = parsers_cd.add_subparsers(dest = 'sub_command')
-    parser_download_composite_product = subparsers_cd.add_parser('download_composite_product',
-                                            help='Download composite products')
-    parser_download_composite_product.add_argument('--workdir', action='store',
-                                                   dest='workdir',
-                                                   default=None,
-                                                   help='Store the command running directory')
-    parser_download_composite_product.add_argument('--rpath', action='store',
-                                                   dest='rpath',
+    parser_download_product = subparsers_cd.add_parser('download_product',
+                                            help='Download product')
+    parser_download_product.add_argument('--source', action='store',
+                                                   dest='source',
                                                    required=True,
-                                                   help='Store the remote source file in artifactory')
-    parser_download_composite_product.add_argument('--tdir', action='store',
-                                                   dest='tdir',
+                                                   help='FQN source name of product in Artifactory')
+
+    parser_download_product.add_argument('--destdir', action='store',
+                                                   dest='destdir',
                                                    default=None,
-                                                   help='Store the product download directory')
-    parser_download_composite_product.set_defaults(func=download_composite_product)
+                                                   help='Store the target directory for product')
     
-    parser_download_single_product = subparsers_cd.add_parser('download_single_product',
-                                            help='Download single products')
-    parser_download_single_product.add_argument('--workdir', action='store',
+    parser_download_product.add_argument('--workdir', action='store',
                                                    dest='workdir',
                                                    default=None,
-                                                   help='Store the command running directory')
-    parser_download_single_product.add_argument('--rpath', action='store',
-                                                   dest='rpath',
-                                                   required=True,
-                                                   help='Store the remote source file in artifactory')
-    parser_download_single_product.add_argument('--tdir', action='store',
-                                                   dest='tdir',
-                                                   default=None,
-                                                   help='Store the product download directory')
-    parser_download_single_product.set_defaults(func=download_single_product)
+                                                   help='Command run directory')
+
+    parser_download_product.add_argument('--product_type', action='store',
+                                                   dest='product_type',
+                                                   default=ProductType.composite,
+                                                   help='Product type')
+
+    parser_download_product.set_defaults(func=dispatch_command('download_product'))
 
     args = parser.parse_args(argv[1:])
     dictargs = vars(args)
@@ -1318,7 +1286,7 @@ if __name__ == "__main__":
     #upload_artifact_byfile("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "test-repo2-1.0.0_b14.jar", "tfstest-group/com/free/freedivision/test/test-repo2/1.0.0_b14/test-repo2-1.0.0_b14.jar")
     #upload_artifact_byfile("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "test-repo3-0.0.1_b66.jar", "tfstest-group/com/free/freedivision/test/test-repo3/0.0.1_b66/test-repo3-0.0.1_b66.jar")
     #download_artifact_byspec("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "art_download.json")
-    #download_product("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "tfstest-group", "com/free/freedivision/test/test/1.0.0_b14/test-1.0.0_b14-full.json", product_type="composite", local_target_dir=None)
+    #download_product("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "tfstest-group", "com/free/freedivision/test/test/1.0.0_b14/test-1.0.0_b14-full.json", product_type="composite", destdir=None)
     #ButlerConfig.load()
     #print ButlerConfig.home()
     #print ButlerConfig.datadir()
