@@ -22,7 +22,8 @@ def _dash_to_underscore(value):
 
 class RepoType(Enum):
     single = 1
-    multi = 2
+    multi_repo = 2
+    multi_natural = 3
     
 class ProductType(Enum):
     simple = 1
@@ -969,19 +970,7 @@ def upload_composite_product(builddir, full_packageinfo_fn, increment_packageinf
     finally:
         ps.popd()
 
-def pre_build_multi_repo(args):
-    lforcebuilds = None
-    if(args["forcebuilds"] and args["forcebuilds"] != "none"):
-        if(args["forcebuilds"] == "all"):
-            lforcebuilds = "all"
-        else:
-            lforcebuilds = args["forcebuilds"].split(',')
-            
-    prodname = args["prodname"]
-    prodversion = args["prodversion"]
-    builddir = args["builddir"]
-    buildurl = args["buildurl"]
-    
+def pre_build_multi_repo(prodname, prodversion, builddir, buildurl, lforcebuilds):
     #
     # Need to be process safe.
     #
@@ -995,7 +984,6 @@ def post_build_composite_product(args):
     base_prodtag = args["prereleasedtag"]
     (full_packageinfo_fn, increment_packageinfo_fn, patch_packageinfo_fn) = pack_composite_product(builddir, base_prodtag)
     upload_composite_product(builddir, full_packageinfo_fn, increment_packageinfo_fn, patch_packageinfo_fn)
-    #
     # Need to be process safe.
     #
     create_post_build_tag(builddir, full_packageinfo_fn)
@@ -1162,6 +1150,26 @@ def download_product_simple(source, destdir=None, workdir=None):
         ps.popd()
         
 def dispatch_command(cmd_name):
+    def pre_build(args):
+        lforcebuilds = None
+        if(args["forcebuilds"] and args["forcebuilds"] != "none"):
+            if(args["forcebuilds"] == "all"):
+                lforcebuilds = "all"
+            else:
+                lforcebuilds = args["forcebuilds"].split(',')
+
+        prodname = args["prodname"]
+        prodversion = args["prodversion"]
+        builddir = args["builddir"]
+        buildurl = args["buildurl"]
+        repo_type = RepoType(int(args['repo_type']))
+        if(repo_type == RepoType.multi_repo):
+            pre_build_multi_repo(prodname, prodversion, builddir, buildurl, lforcebuilds)
+        elif(repo_type == RepoType.multi_natural):
+            print("No implementation for multi_natural yet!")
+        elif(repo_type == RepoType.single):
+            print("No implementation for single yet!")
+
     def download_product(args):
         source = args['source']
         destdir = args['destdir']
@@ -1172,7 +1180,8 @@ def dispatch_command(cmd_name):
         elif(product_type == ProductType.simple):
             download_product_simple(source, destdir, workdir)
 
-    commands = {'download_product':download_product}
+    commands = {'download_product':download_product,
+                'pre_build':pre_build}
     return commands[cmd_name]
 
 def main(argv):
@@ -1189,40 +1198,46 @@ def main(argv):
     parsers_cd = subparsers.add_parser('cd', help='commands to support cd setup')
     
 
-    # Add sub-commands of ci: python butler.py ci <pre_build_multi_repo|post_build_composite_product>
+    # Add sub-commands of ci: python butler.py ci <pre_build|post_build_composite_product>
     #
     subparsers_ci = parsers_ci.add_subparsers(dest = 'level2_ci_commands')
-    parser_prebuild_multi_repo = subparsers_ci.add_parser('pre_build_multi_repo', help='pre build actions')
-    parser_prebuild_multi_repo.add_argument('--prodname',
-                                            action='store',
-                                            dest='prodname',
-                                            required=True,
-                                            help='product name')
+    parser_prebuild = subparsers_ci.add_parser('pre_build', help='pre build actions')
+    parser_prebuild.add_argument('--prodname',
+                                 action='store',
+                                 dest='prodname',
+                                 required=True,
+                                 help='product name')
 
-    parser_prebuild_multi_repo.add_argument('--prodversion',
-                                            action='store',
-                                            dest='prodversion',
-                                            required=True,
-                                            help='product version')
+    parser_prebuild.add_argument('--prodversion',
+                                 action='store',
+                                 dest='prodversion',
+                                 required=True,
+                                 help='product version')
 
-    parser_prebuild_multi_repo.add_argument('--builddir',
-                                            action='store',
-                                            dest='builddir',
-                                            required=True,
-                                            help='root workspace path')
+    parser_prebuild.add_argument('--builddir',
+                                 action='store',
+                                 dest='builddir',
+                                 required=True,
+                                 help='root workspace path')
 
-    parser_prebuild_multi_repo.add_argument('--buildurl',
-                                            action='store',
-                                            dest='buildurl',
-                                            required=True,
-                                            help='current jenkins build url, i.e. http://xxxx:8080/jenkins/job/xxxx/8/')
+    parser_prebuild.add_argument('--buildurl',
+                                 action='store',
+                                 dest='buildurl',
+                                 required=True,
+                                 help='current jenkins build url, i.e. http://xxxx:8080/jenkins/job/xxxx/8/')
 
-    parser_prebuild_multi_repo.add_argument('--forcebuilds',
-                                            action='store',
-                                            dest='forcebuilds',
-                                            default='none',
-                                            help='support build the whole product or partial product manually')
-    parser_prebuild_multi_repo.set_defaults(func=pre_build_multi_repo)
+    parser_prebuild.add_argument('--forcebuilds',
+                                 action='store',
+                                 dest='forcebuilds',
+                                 default='none',
+                                 help='support build the whole product or partial product manually')
+
+    parser_prebuild.add_argument('--repo_type',
+                                 action='store',
+                                 dest='repo_type',
+                                 default='2',
+                                 help='repo type [1|2|3]: 1 - single, 2 - multi_repo, 3 - multi_natural, default:2')
+    parser_prebuild.set_defaults(func=dispatch_command('pre_build'))
 
     parser_postbuild_composite_product = subparsers_ci.add_parser('post_build_composite_product',help='post build actions')
     parser_postbuild_composite_product.add_argument('--builddir',
