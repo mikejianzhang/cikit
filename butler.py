@@ -1165,7 +1165,7 @@ def dispatch_command(cmd_name):
     def download_product(args):
         source = args['source']
         destdir = args['destdir']
-        product_type = args['product_type']
+        product_type = ProductType(int(args['product_type']))
         workdir = args['workdir']
         if(product_type == ProductType.composite):
             download_product_composite(source, destdir, workdir)
@@ -1181,82 +1181,89 @@ def main(argv):
     ButlerConfig.load()
     parser = argparse.ArgumentParser(prog='butler', 
                                      description="butler to assist CI/CD construction")
-    subparsers = parser.add_subparsers(dest = 'command')
-    # Add sub-commands: ci|cd
+    subparsers = parser.add_subparsers(dest = 'level1_commands')
+
+    # Add sub command group: python butler.py <ci|cd> ...
     #
     parsers_ci = subparsers.add_parser('ci', help='commands to support ci setup')
     parsers_cd = subparsers.add_parser('cd', help='commands to support cd setup')
     
-    parent_parser_ci = argparse.ArgumentParser(add_help=False)
-    parent_parser_ci.add_argument('--prodname', action='store', 
-                                    dest='prodname',
-                                    required=True, 
-                                    help='Store the product')
 
-    parent_parser_ci.add_argument('--prodversion', action='store', 
-                                    dest='prodversion',
-                                    required=True,
-                                    help='Store the version of current building product or component')
-
-    parent_parser_ci.add_argument('--builddir', action='store',
-                                    dest='builddir',
-                                    required=True, 
-                                    help='Store the local work directory of current build')
-    
-    parent_parser_ci.add_argument('--buildurl', action='store', 
-                                    dest='buildurl',
-                                    required=True,
-                                    help='Store current jenkins build url')
-
-    parent_parser_ci.add_argument('--forcebuilds', action='store', 
-                                    dest='forcebuilds',
-                                    help='Store the manually kicked off builds')
-
-    # Add sub-commands: pre_build_multi_repo|post_build_composite_product
+    # Add sub-commands of ci: python butler.py ci <pre_build_multi_repo|post_build_composite_product>
     #
-    subparsers_ci = parsers_ci.add_subparsers(dest = 'sub_command')
-    parser_prebuild_multi_repo = subparsers_ci.add_parser('pre_build_multi_repo', 
-                                                        help='Support multiple repositories at pre-build stage', 
-                                                        parents=[parent_parser_ci])
+    subparsers_ci = parsers_ci.add_subparsers(dest = 'level2_ci_commands')
+    parser_prebuild_multi_repo = subparsers_ci.add_parser('pre_build_multi_repo', help='pre build actions')
+    parser_prebuild_multi_repo.add_argument('--prodname',
+                                            action='store',
+                                            dest='prodname',
+                                            required=True,
+                                            help='product name')
+
+    parser_prebuild_multi_repo.add_argument('--prodversion',
+                                            action='store',
+                                            dest='prodversion',
+                                            required=True,
+                                            help='product version')
+
+    parser_prebuild_multi_repo.add_argument('--builddir',
+                                            action='store',
+                                            dest='builddir',
+                                            required=True,
+                                            help='root workspace path')
+
+    parser_prebuild_multi_repo.add_argument('--buildurl',
+                                            action='store',
+                                            dest='buildurl',
+                                            required=True,
+                                            help='current jenkins build url, i.e. http://xxxx:8080/jenkins/job/xxxx/8/')
+
+    parser_prebuild_multi_repo.add_argument('--forcebuilds',
+                                            action='store',
+                                            dest='forcebuilds',
+                                            default='none',
+                                            help='support build the whole product or partial product manually')
     parser_prebuild_multi_repo.set_defaults(func=pre_build_multi_repo)
 
-    parser_postbuild_composite_product = subparsers_ci.add_parser('post_build_composite_product',
-                                                                help='Support composite product at post-build stage')
+    parser_postbuild_composite_product = subparsers_ci.add_parser('post_build_composite_product',help='post build actions')
     parser_postbuild_composite_product.add_argument('--builddir',
                                                     action='store',
                                                     dest='builddir',
-                                                    required=True, 
-                                                    help='Store the local work directory of current build')
-    parser_postbuild_composite_product.add_argument('--prereleasedtag', action='store', 
+                                                    required=True,
+                                                    help='root workspace path')
+    parser_postbuild_composite_product.add_argument('--prereleasedtag',
+                                                    action='store',
                                                     dest='prereleasedtag',
                                                     default=None,
-                                                    help='Store pre released version')
+                                                    help='latest released version')
     parser_postbuild_composite_product.set_defaults(func=post_build_composite_product)
     
-    # Add sub-commands: download_product
+    # Add sub-commands of cd: python butler.py cd <download_product>
     #
-    subparsers_cd = parsers_cd.add_subparsers(dest = 'sub_command')
-    parser_download_product = subparsers_cd.add_parser('download_product',
-                                            help='Download product')
-    parser_download_product.add_argument('--source', action='store',
-                                                   dest='source',
-                                                   required=True,
-                                                   help='FQN source name of product in Artifactory')
+    subparsers_cd = parsers_cd.add_subparsers(dest = 'level2_cd_commands')
+    parser_download_product = subparsers_cd.add_parser('download_product',help='Download product')
+    parser_download_product.add_argument('--source',
+                                         action='store',
+                                         dest='source',
+                                         required=True,
+                                         help='FQN source name of product in Artifactory')
 
-    parser_download_product.add_argument('--destdir', action='store',
-                                                   dest='destdir',
-                                                   default=None,
-                                                   help='Store the target directory for product')
+    parser_download_product.add_argument('--destdir',
+                                         action='store',
+                                         dest='destdir',
+                                         default=None,
+                                         help='target folder to download product')
     
-    parser_download_product.add_argument('--workdir', action='store',
-                                                   dest='workdir',
-                                                   default=None,
-                                                   help='Command run directory')
+    parser_download_product.add_argument('--workdir',
+                                         action='store',
+                                         dest='workdir',
+                                         default=None,
+                                         help='command run directory')
 
-    parser_download_product.add_argument('--product_type', action='store',
-                                                   dest='product_type',
-                                                   default=ProductType.composite,
-                                                   help='Product type')
+    parser_download_product.add_argument('--product_type',
+                                         action='store',
+                                         dest='product_type',
+                                         default='2',
+                                         help='product type [1|2]: 1 - simple, 2 - composite, default:2')
 
     parser_download_product.set_defaults(func=dispatch_command('download_product'))
 
