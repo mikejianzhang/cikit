@@ -564,7 +564,7 @@ def _get_buildinfo(prodname, prodversion, builddir, buildurl, forcebuilds=None):
     
     return props
 
-def create_pre_build_tag(builddir, props):
+def _create_pre_build_tag(builddir, props):
     ps = PathStackMgr()
     try:
         ps.pushd(builddir + os.sep + ".repo" + os.sep + "manifests")
@@ -582,7 +582,7 @@ def create_pre_build_tag(builddir, props):
     finally:
         ps.popd()
         
-def create_post_build_tag(builddir, full_packageinfo_fn):
+def _create_post_build_tag(builddir, full_packageinfo_fn):
     ps = PathStackMgr()
     try:
         props = _load_buildproperties(builddir + os.path.sep + "build-info.properties")
@@ -884,7 +884,7 @@ def download_artifact_byfile(workdir, art_server_id, art_source_file, local_targ
     finally:
         ps.popd()
 
-def pack_composite_product(builddir, base_prodtag):
+def _pack_composite_product(builddir, base_prodtag):
     ps = PathStackMgr()
     try:
         current_buildprops = _load_buildproperties(builddir + os.sep + "build-info.properties")
@@ -931,7 +931,7 @@ def pack_composite_product(builddir, base_prodtag):
     finally:
         ps.popd()
         
-def upload_composite_product(builddir, full_packageinfo_fn, increment_packageinfo_fn, patch_packageinfo_fn):
+def _upload_composite_product(builddir, full_packageinfo_fn, increment_packageinfo_fn, patch_packageinfo_fn):
     ps = PathStackMgr()
     try:
         ps.pushd(builddir)
@@ -979,17 +979,17 @@ def pre_build_multi_repo(prodname, prodversion, builddir, buildurl, lforcebuilds
     # Need to be process safe.
     #
     props = _get_buildinfo(prodname, prodversion, builddir, buildurl, lforcebuilds)
-    create_pre_build_tag(builddir, props)
+    _create_pre_build_tag(builddir, props)
     #
     # 
 
 def post_build_composite_product(builddir, base_prodtag):
-    (full_packageinfo_fn, increment_packageinfo_fn, patch_packageinfo_fn) = pack_composite_product(builddir, base_prodtag)
-    upload_composite_product(builddir, full_packageinfo_fn, increment_packageinfo_fn, patch_packageinfo_fn)
+    (full_packageinfo_fn, increment_packageinfo_fn, patch_packageinfo_fn) = _pack_composite_product(builddir, base_prodtag)
+    _upload_composite_product(builddir, full_packageinfo_fn, increment_packageinfo_fn, patch_packageinfo_fn)
 
     # Need to be process safe.
     #
-    create_post_build_tag(builddir, full_packageinfo_fn)
+    _create_post_build_tag(builddir, full_packageinfo_fn)
     #
     #
 
