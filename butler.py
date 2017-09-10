@@ -282,7 +282,7 @@ class Repo(object):
         
     
 
-def _get_changed_repos(buildurl):
+def _get_changed_repos_since_last_success_build(buildurl):
     '''
     Get all changed repos since last successful builds which deal with multi builds in parallel.
     buildurl - Jenkins build url (i.e. http://localhost:8080/jenkins/view/test/job/copd-multi/9/)
@@ -360,13 +360,17 @@ def _calculate_repos_buildneeded(builddir, currentRepos):
     return reposBuildNeeded
 
 def _get_repos_buildneeded(builddir, buildurl, forcebuilds=None):
-    reposneedbuild = [] 
+    reposneedbuild = []
+    changedRepos = _get_changed_repos_since_last_success_build(buildurl)
+    if(changedRepos):
+        new_repos = filter(lambda x:x not in reposneedbuild, changedRepos)
+        reposneedbuild.extend(new_repos)
+
     if(forcebuilds):
-        reposneedbuild = _calculate_repos_buildneeded(builddir, forcebuilds)
-    else:  
-        changedRepos = _get_changed_repos(buildurl)
-        if(changedRepos):
-            reposneedbuild = _calculate_repos_buildneeded(builddir, changedRepos)
+        new_repos = filter(lambda x:x not in reposneedbuild, forcebuilds)
+        reposneedbuild.extend(new_repos)
+
+    reposneedbuild = _calculate_repos_buildneeded(builddir, reposneedbuild)
             
     return reposneedbuild
 
@@ -491,7 +495,7 @@ def _get_manifest_info(builddir):
         if(output):
             loutput = output.split('\n')
             firstline = loutput[0]
-            pattern = ".*(ssh:\/\/.*).*\(fetch\)$"
+            pattern = ".*\s+(ssh:\/\/.*)\s+\(fetch\)$"
             m = re.search(pattern, firstline)
             if(m):
                 manifestUrl = m.group(1)
@@ -518,7 +522,7 @@ def _get_manifest_info(builddir):
     
     return (manifestUrl, manifestBranch, manifestRemoteBranch, manifestCommit)
 
-def get_buildinfo(prodname, prodversion, builddir, buildurl, forcebuilds=None):
+def _get_buildinfo(prodname, prodversion, builddir, buildurl, forcebuilds=None):
     (buildnumber, uniquebuildnumber) = _get_next_buildnumber(prodname, prodversion, builddir)
     buildversion = "%s_b%s" % (prodversion, str(buildnumber))
     buildtag = "%s_%s_t%s" % (prodname, prodversion, str(buildnumber))
@@ -974,7 +978,7 @@ def pre_build_multi_repo(prodname, prodversion, builddir, buildurl, lforcebuilds
     #
     # Need to be process safe.
     #
-    props = get_buildinfo(prodname, prodversion, builddir, buildurl, lforcebuilds)
+    props = _get_buildinfo(prodname, prodversion, builddir, buildurl, lforcebuilds)
     create_pre_build_tag(builddir, props)
     #
     # 
@@ -1302,7 +1306,8 @@ def main(argv):
     args.func(dictargs)
     
 if __name__ == "__main__":
-    main(sys.argv)
+    #main(sys.argv)
+    ButlerConfig.load()
     #print _dash_to_underscore("test-repo1-yes")
     #build = _get_repos_buildneeded("http://localhost:8080/jenkins/job/copd-multi/11/changes", forcebuilds="all")
     #for x in build:
@@ -1311,7 +1316,7 @@ if __name__ == "__main__":
     #changedRepos = _get_changed_repos("http://localhost:8080/jenkins/view/test/job/copd-test-parallel-cibuild/11/")
     #print changedRepos
     #print _calculate_repos_buildneeded("/Users/mike/Documents/MikeWorkspace/Philips/workspace/test", 'all')
-    #print _get_manifest_info("/Users/mike/Documents/MikeWorkspace/Philips/workspace/test")
+    print _get_manifest_info("/Users/mike/Documents/MikeWorkspace/cikit/test")
     #_test_package("mikepro-artifactory", "tfstest-dev-local")
     #postbuild(None)
     #download_artifact_byfile("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "tfstest-group/com/free/freedivision/test/test/1.0.0_b14/test-1.0.0_b14-full.json", "/Users/mike/.butler/data/")
@@ -1324,7 +1329,6 @@ if __name__ == "__main__":
     #upload_artifact_byfile("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "test-repo3-0.0.1_b66.jar", "tfstest-group/com/free/freedivision/test/test-repo3/0.0.1_b66/test-repo3-0.0.1_b66.jar")
     #download_artifact_byspec("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "art_download.json")
     #download_product("/Users/mike/Documents/MikeWorkspace/cikit/test", "mikepro-artifactory", "tfstest-group", "com/free/freedivision/test/test/1.0.0_b14/test-1.0.0_b14-full.json", product_type="composite", destdir=None)
-    #ButlerConfig.load()
     #print ButlerConfig.home()
     #print ButlerConfig.datadir()
     #print ButlerConfig.default_jenkins()
