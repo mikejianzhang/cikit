@@ -1253,23 +1253,23 @@ def main(argv):
                                  help='repo type [1|2|3]: 1 - single, 2 - multi_repo, 3 - multi_natural, default:2')
     parser_prebuild.set_defaults(func=dispatch_command('pre_build'))
 
-    parser_postbuild_composite_product = subparsers_ci.add_parser('post_build',help='post build actions')
-    parser_postbuild_composite_product.add_argument('--builddir',
+    parser_postbuild = subparsers_ci.add_parser('post_build',help='post build actions')
+    parser_postbuild.add_argument('--builddir',
                                                     action='store',
                                                     dest='builddir',
                                                     required=True,
                                                     help='root workspace path')
-    parser_postbuild_composite_product.add_argument('--prereleasedtag',
+    parser_postbuild.add_argument('--prereleasedtag',
                                                     action='store',
                                                     dest='prereleasedtag',
                                                     default=None,
                                                     help='latest released version')
-    parser_download_product.add_argument('--product_type',
+    parser_postbuild.add_argument('--product_type',
                                          action='store',
                                          dest='product_type',
                                          default='2',
                                          help='product type [1|2]: 1 - simple, 2 - composite, default:2')
-    parser_postbuild_composite_product.set_defaults(func=dispatch_command('post_build'))
+    parser_postbuild.set_defaults(func=dispatch_command('post_build'))
     
     # Add sub-commands of cd: python butler.py cd <download_product>
     #
