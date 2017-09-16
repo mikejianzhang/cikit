@@ -1,6 +1,6 @@
 import sys
 import argparse
-from cikit.cmds import all_commands
+#from cikit.cmds import all_commands
 
 def _commander(cmdName):
     def runCMD(args):
@@ -61,4 +61,6 @@ def _main(argv):
     
     
 if __name__ == "__main__":
-    _main(sys.argv)
+    #_main(sys.argv)
+    from onekit.cdkits.service import *
+    print "hello"

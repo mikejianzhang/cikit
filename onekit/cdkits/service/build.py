@@ -2,15 +2,6 @@
 from enum import Enum
 from abc import ABCMeta,abstractproperty,abstractmethod
 
-class RepoType(Enum):
-    single = 1
-    multi_repo = 2
-    multi_natural = 3
-    
-class ProductType(Enum):
-    simple = 1
-    composite = 2
-
 class BuildActionType(Enum):
     pre_build = 1
     post_build = 2
@@ -54,4 +45,6 @@ class Build(object):
     def run(self, build_action_type):
         for ba in self._build_actions[str(build_action_type)]:
             ba.run()
+            
+__all__ = ['BuildActionType', 'BuildAction', 'Build']
             

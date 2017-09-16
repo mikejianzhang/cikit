@@ -7,3 +7,5 @@ class PreBuildMultiRepoAction(BuildAction):
         
     def run(self):
         pass
+    
+__all__ = ['PreBuildMultiRepoAction']
